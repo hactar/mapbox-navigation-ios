@@ -3,6 +3,7 @@
 ## master
 
 * The `NavigationDirections.unpackTilePack(at:outputDirectoryURL:progressHandler:completionHandler:)` method is now available to Objective-C code as `-[MBNavigationDirections unpackTilePackAtURL:outputDirectoryURL:progressHandler:completionHandler:]`. ([#1891](https://github.com/mapbox/mapbox-navigation-ios/pull/1891))
+* The CarPlay guidance panel now shows lane guidance. ([#1885](https://github.com/mapbox/mapbox-navigation-ios/pull/1885))
 
 ## v0.26.0
 
