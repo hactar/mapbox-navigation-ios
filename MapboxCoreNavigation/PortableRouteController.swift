@@ -60,12 +60,12 @@ open class PortableRouteController: RouteController {
         locations.forEach { navigator.updateLocation(for: MBFixLocation($0)) }
         super.locationManager(manager, didUpdateLocations: locations)
     }
-    
-    override internal func userIsWithinRadiusOfRoute(location: CLLocation) -> Bool {
-        let status = navigator.getStatusForTimestamp(location.timestamp)
-        let offRoute = status.routeState == .offRoute
-        return !offRoute
-    }
+// Super implementation appears to be better.    
+//    override internal func userIsWithinRadiusOfRoute(location: CLLocation) -> Bool {
+//        let status = navigator.getStatusForTimestamp(location.timestamp)
+//        let offRoute = status.routeState == .offRoute
+//        return !offRoute
+//    }
     
     /**
      Advances the leg index. This override also advances the leg index of the native navigator.
