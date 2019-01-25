@@ -35,7 +35,6 @@ class RouteMapViewController: UIViewController {
     
     var route: Route { return navService.router.route }
     var currentPreviewInstructionBannerStepIndex: Int?
-    var dismissed = false
     var updateETATimer: Timer?
     // True if the viewcontroller is being dismissed and should stop creating timers.
     var dismissed = false
@@ -915,7 +914,6 @@ extension RouteMapViewController: NavigationViewDelegate {
     
     func resetETATimer() {
         removeTimer()
-<<<<<<< HEAD
         // Don't reschedule timer if view is not in hierarchy - else it can cause a race condition where
         // the timer keeps a reference to the controller, and so deinit is never called and the object
         // remains in memory.

@@ -7,6 +7,7 @@ import MapboxDirections
 open class PortableRouteController: RouteController {
     
     let navigator = MBNavigator()
+    public var recordedLocations: [CLLocation] = []
     
     override public var route: Route {
         get {
@@ -57,7 +58,10 @@ open class PortableRouteController: RouteController {
     }
     
     override public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        locations.forEach { navigator.updateLocation(for: MBFixLocation($0)) }
+        locations.forEach {
+            navigator.updateLocation(for: MBFixLocation($0))
+            recordedLocations.append(contentsOf: locations)
+        }
         super.locationManager(manager, didUpdateLocations: locations)
     }
 // Super implementation appears to be better.    
