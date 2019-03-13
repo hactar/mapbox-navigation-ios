@@ -60,8 +60,8 @@ open class PortableRouteController: RouteController {
     override public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         locations.forEach {
             navigator.updateLocation(for: MBFixLocation($0))
-            recordedLocations.append(contentsOf: locations)
         }
+        recordedLocations.append(contentsOf: locations)
         super.locationManager(manager, didUpdateLocations: locations)
     }
 // Super implementation appears to be better.    
