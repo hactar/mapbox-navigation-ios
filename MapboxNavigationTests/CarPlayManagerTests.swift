@@ -5,7 +5,6 @@ import MapboxMobileEvents
 @testable import TestHelper
 @testable import MapboxNavigation
 
-
 #if canImport(CarPlay)
 import CarPlay
 
@@ -22,7 +21,7 @@ class CarPlayManagerTests: XCTestCase {
     override func setUp() {
         super.setUp()
         eventsManagerSpy = NavigationEventsManagerSpy()
-        manager = CarPlayManager(eventsManager: eventsManagerSpy)
+        manager = CarPlayManager(eventsManager: eventsManagerSpy, navigationViewControllerClass: CarPlayNavigationViewControllerTestable.self)
         searchController = CarPlaySearchController()
     }
 
@@ -121,6 +120,22 @@ class CarPlayManagerTests: XCTestCase {
         XCTAssertEqual(2, mapTemplate.leadingNavigationBarButtons.count)
         XCTAssertEqual(2, mapTemplate.trailingNavigationBarButtons.count)
     }
+    
+    func testManagerAsksDelegateForLeadingAndTrailingBarButtonsIfNotAvailable() {
+        // NOTE: Xcode is going to complain here - ignore. This is a known XCTest bug.
+        guard #available(iOS 12, *) else { return }
+        
+        simulateCarPlayConnection(manager!)
+        
+        guard let fakeInterfaceController = manager?.interfaceController else {
+            XCTFail("Dependencies not met! Bailing...")
+            return
+        }
+        
+        let mapTemplate: CPMapTemplate = fakeInterfaceController.rootTemplate as! CPMapTemplate
+        XCTAssertEqual(0, mapTemplate.leadingNavigationBarButtons.count)
+        XCTAssertEqual(0, mapTemplate.trailingNavigationBarButtons.count)
+    }
 
     func testManagerAsksDelegateForMapButtonsIfAvailable() {
         // NOTE: Xcode is going to complain here - ignore. This is a known XCTest bug.
@@ -140,6 +155,21 @@ class CarPlayManagerTests: XCTestCase {
 
         let mapTemplate: CPMapTemplate = fakeInterfaceController.rootTemplate as! CPMapTemplate
         XCTAssertEqual(1, mapTemplate.mapButtons.count)
+    }
+    
+    func testManagerAsksDelegateForMapButtonsIfNotAvailable() {
+        // NOTE: Xcode is going to complain here - ignore. This is a known XCTest bug.
+        guard #available(iOS 12, *) else { return }
+        
+        simulateCarPlayConnection(manager!)
+        
+        guard let fakeInterfaceController = manager?.interfaceController else {
+            XCTFail("Dependencies not met! Bailing...")
+            return
+        }
+        
+        let mapTemplate: CPMapTemplate = fakeInterfaceController.rootTemplate as! CPMapTemplate
+        XCTAssertEqual(4, mapTemplate.mapButtons.count)
     }
 
     func testManagerTellsDelegateWhenNavigationStartsAndEndsDueToArrival() {
@@ -178,10 +208,25 @@ class CarPlayManagerTests: XCTestCase {
         // the CarPlayNavigationDelegate is notified
         XCTAssertTrue(exampleDelegate.navigationInitiated, "The CarPlayManagerDelegate should have been told that navigation was initiated.")
 
-        manager.carPlayNavigationViewControllerDidArrive(manager.currentNavigator!)
+        manager.currentNavigator!.exitNavigation(byCanceling: true)
 
         XCTAssertTrue(exampleDelegate.navigationEnded, "The CarPlayManagerDelegate should have been told that navigation ended.")
     }
+    
+    func testRouteFailure() {
+        
+        let manager = CarPlayManager()
+        
+        let spy = CarPlayManagerFailureDelegateSpy()
+        let testError = NSError(domain: "com.mapbox.test", code: 42, userInfo: nil)
+        let locOne = CLLocationCoordinate2D(latitude: 0, longitude: 0)
+        let fakeOptions = RouteOptions(coordinates: [locOne])
+        manager.delegate = spy
+        manager.didCalculate(nil, for: fakeOptions, between: nil, error: testError, completionHandler: { })
+        XCTAssert(spy.recievedError == testError, "Delegate should have receieved error")
+        
+    }
+    
     
     func testDirectionsOverride() {
         
@@ -223,16 +268,7 @@ class CarPlayManagerTests: XCTestCase {
     }
 }
 
-
-
-
-@available(iOS 12.0, *)
-func simulateCarPlayConnection(_ manager: CarPlayManager) {
-    let fakeInterfaceController = FakeCPInterfaceController(#function)
-    let fakeWindow = CPWindow()
-
-    manager.application(UIApplication.shared, didConnectCarInterfaceController: fakeInterfaceController, to: fakeWindow)
-}
+//MARK: -
 
 import Quick
 import Nimble
@@ -246,15 +282,92 @@ class CarPlayManagerSpec: QuickSpec {
         var delegate: TestCarPlayManagerDelegate?
 
         beforeEach {
-            manager = CarPlayManager()
+            let directionsSpy = DirectionsSpy(accessToken: "asdf")
+            manager = CarPlayManager(styles: nil, directions: directionsSpy, eventsManager: nil)
             delegate = TestCarPlayManagerDelegate()
             manager!.delegate = delegate
 
             simulateCarPlayConnection(manager!)
         }
 
-        describe("Starting a trip", {
+        //MARK: Previewing Routes
+        describe("Previewing routes", {
+            beforeEach {
+                manager!.mapTemplateProvider = MapTemplateSpyProvider()
+            }
 
+            let previewRoutesAction = {
+                let route = Fixture.route(from: "route-with-banner-instructions")
+                let waypoints = route.routeOptions.waypoints
+
+                let directionsSpy = manager!.directions as! DirectionsSpy
+
+                manager!.previewRoutes(for: route.routeOptions, completionHandler: {})
+                directionsSpy.fireLastCalculateCompletion(with: waypoints, routes: [route], error: nil)
+            }
+
+            context("when the trip is not customized by the developer", {
+                beforeEach {
+                    previewRoutesAction()
+                }
+                
+                it("previews a route/options with the default configuration") {
+                    let interfaceController = manager!.interfaceController as! FakeCPInterfaceController
+                    let mapTemplateSpy: MapTemplateSpy =  interfaceController.topTemplate as! MapTemplateSpy
+                    
+                    expect(mapTemplateSpy.currentTripPreviews).toNot(beEmpty())
+                    let expectedStartButtonTitle = NSLocalizedString("CARPLAY_GO", bundle: .mapboxNavigation, value: "Go", comment: "Title for start button in CPTripPreviewTextConfiguration")
+                    expect(mapTemplateSpy.currentPreviewTextConfiguration?.startButtonTitle).to(equal(expectedStartButtonTitle))
+                }
+            })
+            
+            context("when the delegate provides a custom trip", {
+                var customTrip: CPTrip!
+
+                beforeEach {
+                    let customTripDelegate = CustomTripPreviewDelegate()
+                    customTrip = CPTrip(origin: MKMapItem(), destination: MKMapItem(), routeChoices: [])
+                    customTripDelegate.customTrip = customTrip
+                    manager!.delegate = customTripDelegate
+
+                    previewRoutesAction()
+                }
+
+                it("shows trip previews for the custom trip") {
+                    let interfaceController = manager!.interfaceController as! FakeCPInterfaceController
+                    let mapTemplateSpy: MapTemplateSpy =  interfaceController.topTemplate as! MapTemplateSpy
+
+                    expect(mapTemplateSpy.currentTripPreviews).to(contain(customTrip))
+                    expect(mapTemplateSpy.currentPreviewTextConfiguration).toNot(beNil())
+                }
+            })
+            
+            context("when the delegate provides a custom trip preview text", {
+                var customTripPreviewTextConfiguration: CPTripPreviewTextConfiguration!
+                let customStartButtonTitleText = "Let's roll"
+                
+                beforeEach {
+                    let customTripDelegate = CustomTripPreviewDelegate()
+                    customTripPreviewTextConfiguration = CPTripPreviewTextConfiguration(startButtonTitle: customStartButtonTitleText, additionalRoutesButtonTitle: nil, overviewButtonTitle: nil)
+                    customTripDelegate.customTripPreviewTextConfiguration = customTripPreviewTextConfiguration
+                    manager!.delegate = customTripDelegate
+
+                    previewRoutesAction()
+                }
+                
+                it("previews a route/options with the custom trip configuration") {
+                    let interfaceController = manager!.interfaceController as! FakeCPInterfaceController
+                    let mapTemplateSpy: MapTemplateSpy =  interfaceController.topTemplate as! MapTemplateSpy
+                    
+                    expect(mapTemplateSpy.currentTripPreviews).toNot(beEmpty())
+                    expect(mapTemplateSpy.currentPreviewTextConfiguration?.startButtonTitle).to(equal(customStartButtonTitleText))
+                }
+
+            })
+        })
+        
+        //MARK: Starting a Trip
+        describe("Starting a trip", {
             let action = {
                 let fakeTemplate = CPMapTemplate()
                 let fakeRouteChoice = CPRouteChoice(summaryVariants: ["summary1"], additionalInformationVariants: ["addl1"], selectionSummaryVariants: ["selection1"])
@@ -298,6 +411,67 @@ class CarPlayManagerSpec: QuickSpec {
             })
         })
     }
+
+    private class CustomTripPreviewDelegate: CarPlayManagerDelegate {
+        
+        var customTripPreviewTextConfiguration: CPTripPreviewTextConfiguration?
+        var customTrip: CPTrip?
+
+        func carPlayManager(_ carPlayManager: CarPlayManager, willPreview trip: CPTrip) -> (CPTrip) {
+            return customTrip ?? trip
+        }
+
+        func carPlayManager(_ carPlayManager: CarPlayManager, willPreview trip: CPTrip, with previewTextConfiguration: CPTripPreviewTextConfiguration) -> (CPTripPreviewTextConfiguration) {
+            return customTripPreviewTextConfiguration ?? previewTextConfiguration
+        }
+
+        func carPlayManager(_ carPlayManager: CarPlayManager, didBeginNavigationWith service: NavigationService) {
+            //no-op
+        }
+
+        func carPlayManagerDidEndNavigation(_ carPlayManager: CarPlayManager) {
+            //no-op
+        }
+        
+        func carPlayManager(_ carPlayManager: CarPlayManager, navigationServiceAlong route: Route, desiredSimulationMode: SimulationMode) -> NavigationService {
+            let directionsFake = Directions(accessToken: "foo")
+            return MapboxNavigationService(route: route, directions: directionsFake, simulating: desiredSimulationMode)
+        }
+    }
+}
+
+//MARK: -
+//MARK: Test Helper Methods
+
+@available(iOS 12.0, *)
+func simulateCarPlayConnection(_ manager: CarPlayManager) {
+    let fakeInterfaceController = FakeCPInterfaceController(#function)
+    let fakeWindow = CPWindow()
+    
+    manager.application(UIApplication.shared, didConnectCarInterfaceController: fakeInterfaceController, to: fakeWindow)
+}
+
+@available(iOS 12.0, *)
+class CarPlayManagerFailureDelegateSpy: CarPlayManagerDelegate {
+    private(set) var recievedError: NSError?
+    
+    @available(iOS 12.0, *)
+    func carPlayManager(_ carPlayManager: CarPlayManager, didFailToFetchRouteBetween waypoints: [Waypoint]?, options: RouteOptions, error: NSError) -> CPNavigationAlert? {
+        recievedError = error
+        return nil
+    }
+    
+    func carPlayManager(_ carPlayManager: CarPlayManager, navigationServiceAlong route: Route, desiredSimulationMode: SimulationMode) -> NavigationService {
+        fatalError("This is an empty stub.")
+    }
+    
+    func carPlayManager(_ carPlayManager: CarPlayManager, didBeginNavigationWith service: NavigationService) {
+        fatalError("This is an empty stub.")
+    }
+    
+    func carPlayManagerDidEndNavigation(_ carPlayManager: CarPlayManager) {
+        fatalError("This is an empty stub.")
+    }
 }
 
 //MARK: Test Objects / Classes.
@@ -315,8 +489,8 @@ class TestCarPlayManagerDelegate: CarPlayManagerDelegate {
     public var trailingBarButtons: [CPBarButton]?
     public var mapButtons: [CPMapButton]?
 
-    func carPlayManager(_ carPlayManager: CarPlayManager, navigationServiceAlong route: Route) -> NavigationService {
-        let response = Fixture.JSONFromFileNamed(name: "routeWithInstructions")
+    func carPlayManager(_ carPlayManager: CarPlayManager, navigationServiceAlong route: Route, desiredSimulationMode: SimulationMode) -> NavigationService {
+        let response = Fixture.JSONFromFileNamed(name: jsonFileName)
         let jsonRoute = (response["routes"] as! [AnyObject]).first as! [String: Any]
         let initialRoute: Route = {
             let waypoint1 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.795042, longitude: -122.413165))
@@ -328,15 +502,15 @@ class TestCarPlayManagerDelegate: CarPlayManagerDelegate {
             return route
         }()
         let directionsClientSpy = DirectionsSpy(accessToken: "garbage", host: nil)
-        let service = MapboxNavigationService(route: initialRoute, directions: directionsClientSpy, locationSource: NavigationLocationManager(), eventsManagerType: NavigationEventsManagerSpy.self)
+        let service = MapboxNavigationService(route: initialRoute, directions: directionsClientSpy, locationSource: NavigationLocationManager(), eventsManagerType: NavigationEventsManagerSpy.self, simulating: desiredSimulationMode)
         return service
     }
 
-    func carPlayManager(_ carPlayManager: CarPlayManager, leadingNavigationBarButtonsCompatibleWith traitCollection: UITraitCollection, in template: CPTemplate, for activity: CarPlayActivity) -> [CPBarButton]? {
+    func carPlayManager(_ carPlayManager: CarPlayManager, leadingNavigationBarButtonsCompatibleWith traitCollection: UITraitCollection, in: CPTemplate, for activity: CarPlayActivity) -> [CPBarButton]? {
         return leadingBarButtons
     }
 
-    func carPlayManager(_ carPlayManager: CarPlayManager, trailingNavigationBarButtonsCompatibleWith traitCollection: UITraitCollection, in template: CPTemplate, for activity: CarPlayActivity) -> [CPBarButton]? {
+    func carPlayManager(_ carPlayManager: CarPlayManager, trailingNavigationBarButtonsCompatibleWith traitCollection: UITraitCollection, in: CPTemplate, for activity: CarPlayActivity) -> [CPBarButton]? {
         return trailingBarButtons
     }
 
@@ -354,6 +528,13 @@ class TestCarPlayManagerDelegate: CarPlayManagerDelegate {
         XCTAssertTrue(navigationInitiated)
         navigationEnded = true
         currentService = nil
+    }
+}
+
+@available(iOS 12.0, *)
+class CarPlayNavigationViewControllerTestable: CarPlayNavigationViewController {
+    override func dismiss(animated flag: Bool, completion: (() -> Void)? = nil) {
+        completion?()
     }
 }
 
@@ -381,6 +562,29 @@ class TestCarPlaySearchControllerDelegate: CarPlaySearchControllerDelegate {
     
     func popTemplate(animated: Bool) {
         interfaceController?.popTemplate(animated: animated)
+    }
+}
+
+@available(iOS 12.0, *)
+class MapTemplateSpy: CPMapTemplate {
+    private(set) var currentTripPreviews: [CPTrip]?
+    private(set) var currentPreviewTextConfiguration: CPTripPreviewTextConfiguration?
+
+    override func showTripPreviews(_ tripPreviews: [CPTrip], textConfiguration: CPTripPreviewTextConfiguration?) {
+        currentTripPreviews = tripPreviews
+        currentPreviewTextConfiguration = textConfiguration
+    }
+    
+    override func hideTripPreviews() {
+        currentTripPreviews = nil
+        currentPreviewTextConfiguration = nil
+    }
+}
+
+@available(iOS 12.0, *)
+public class MapTemplateSpyProvider: MapTemplateProvider {
+    override public func createMapTemplate() -> CPMapTemplate {
+        return MapTemplateSpy()
     }
 }
 

@@ -1,4 +1,4 @@
-import Foundation
+import UIKit
 import CoreLocation
 import MapboxDirections
 
@@ -118,7 +118,7 @@ public protocol NavigationService: CLLocationManagerDelegate, RouterDataSource, 
 @objc(MBNavigationService)
 public class MapboxNavigationService: NSObject, NavigationService, DefaultInterfaceFlag {
     
-    typealias DefaultRouter = PortableRouteController
+    typealias DefaultRouter = RouteController
     
     /**
      The default time interval before beginning simulation when the `.onPoorGPS` simulation option is enabled.
@@ -240,7 +240,7 @@ public class MapboxNavigationService: NSObject, NavigationService, DefaultInterf
                                locationSource: NavigationLocationManager? = nil,
                                eventsManagerType: NavigationEventsManager.Type? = nil,
                                simulating simulationMode: SimulationMode = .onPoorGPS,
-                               routerType: Router.Type? = DefaultRouter.self)
+                               routerType: Router.Type? = nil)
     {
         nativeLocationSource = locationSource ?? NavigationLocationManager()
         self.directions = directions ?? Directions.shared
@@ -263,6 +263,9 @@ public class MapboxNavigationService: NSObject, NavigationService, DefaultInterf
         
         router.delegate = self
         nativeLocationSource.delegate = self
+        
+        checkForUpdates()
+        checkForLocationUsageDescription()
     }
     
     deinit {
@@ -331,6 +334,8 @@ public class MapboxNavigationService: NSObject, NavigationService, DefaultInterf
         if simulationMode == .always {
             simulate()
         }
+        
+        eventsManager.sendRouteRetrievalEvent()
     }
     
     public func stop() {
@@ -368,7 +373,7 @@ public class MapboxNavigationService: NSObject, NavigationService, DefaultInterf
     }
     
     func resumeNotifications() {
-        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillTerminate(_:)), name: .UIApplicationWillTerminate, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillTerminate(_:)), name: UIApplication.willTerminateNotification, object: nil)
     }
     
     func suspendNotifications() {
@@ -455,6 +460,14 @@ extension MapboxNavigationService: RouterDelegate {
         delegate?.navigationService?(self, didUpdate: progress, with: location, rawLocation: rawLocation)
     }
     
+    public func router(_ router: Router, didPassVisualInstructionPoint instruction: VisualInstructionBanner, routeProgress: RouteProgress) {
+        delegate?.navigationService?(self, didPassVisualInstructionPoint: instruction, routeProgress: routeProgress)
+    }
+    
+    public func router(_ router: Router, didPassSpokenInstructionPoint instruction: SpokenInstruction, routeProgress: RouteProgress) {
+        delegate?.navigationService?(self, didPassSpokenInstructionPoint: instruction, routeProgress: routeProgress)
+    }
+    
     //MARK: Questions
     public func router(_ router: Router, shouldRerouteFrom location: CLLocation) -> Bool {
         return delegate?.navigationService?(self, shouldRerouteFrom: location) ?? Default.shouldRerouteFromLocation
@@ -491,10 +504,6 @@ extension MapboxNavigationService {
         return self.router.routeProgress
     }
     
-    public var location: CLLocation? {
-        return self.locationManager.location
-    }
-    
     public var desiredAccuracy: CLLocationAccuracy {
         return self.locationManager.desiredAccuracy
     }
@@ -529,5 +538,34 @@ private extension Double {
         let milliseconds = self * 1000.0 //milliseconds per second
         let intMilliseconds = Int(milliseconds)
         return .milliseconds(intMilliseconds)
+    }
+}
+
+
+private func checkForUpdates() {
+    #if TARGET_IPHONE_SIMULATOR
+    guard (NSClassFromString("XCTestCase") == nil) else { return } // Short-circuit when running unit tests
+    guard let version = Bundle(for: RouteController.self).object(forInfoDictionaryKey: "CFBundleShortVersionString") else { return }
+    let latestVersion = String(describing: version)
+    _ = URLSession.shared.dataTask(with: URL(string: "https://docs.mapbox.com/ios/navigation/latest_version.txt")!, completionHandler: { (data, response, error) in
+        if let _ = error { return }
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else { return }
+        
+        guard let data = data, let currentVersion = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .newlines) else { return }
+        
+        if latestVersion != currentVersion {
+            let updateString = NSLocalizedString("UPDATE_AVAILABLE", bundle: .mapboxCoreNavigation, value: "Mapbox Navigation SDK for iOS version %@ is now available.", comment: "Inform developer an update is available")
+            print(String.localizedStringWithFormat(updateString, latestVersion), "https://github.com/mapbox/mapbox-navigation-ios/releases/tag/v\(latestVersion)")
+        }
+    }).resume()
+    #endif
+}
+
+private func checkForLocationUsageDescription() {
+    guard let _ = Bundle.main.bundleIdentifier else {
+        return
+    }
+    if Bundle.main.locationAlwaysUsageDescription == nil && Bundle.main.locationWhenInUseUsageDescription == nil && Bundle.main.locationAlwaysAndWhenInUseUsageDescription == nil {
+        preconditionFailure("This application’s Info.plist file must include a NSLocationWhenInUseUsageDescription. See https://developer.apple.com/documentation/corelocation for more information.")
     }
 }
