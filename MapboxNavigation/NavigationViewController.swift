@@ -154,7 +154,7 @@ open class NavigationViewController: UIViewController {
         }
     }
     
-    var mapViewController: RouteMapViewController?
+    public var mapViewController: RouteMapViewController?
     
     var bottomViewController: ContainerViewController?
     
