@@ -593,24 +593,24 @@ extension RouteMapViewController: NavigationViewDelegate {
     
     // MARK: VisualInstructionDelegate
     
-    func label(_ label: InstructionLabel, willPresent instruction: VisualInstruction, as presented: NSAttributedString) -> NSAttributedString? {
+    public func label(_ label: InstructionLabel, willPresent instruction: VisualInstruction, as presented: NSAttributedString) -> NSAttributedString? {
         return delegate?.label?(label, willPresent: instruction, as: presented)
     }
 
     // MARK: NavigationMapViewCourseTrackingDelegate
-    func navigationMapViewDidStartTrackingCourse(_ mapView: NavigationMapView) {
+    public func navigationMapViewDidStartTrackingCourse(_ mapView: NavigationMapView) {
         navigationView.resumeButton.isHidden = true
         mapView.logoView.isHidden = false
     }
 
-    func navigationMapViewDidStopTrackingCourse(_ mapView: NavigationMapView) {
+    public func navigationMapViewDidStopTrackingCourse(_ mapView: NavigationMapView) {
         navigationView.resumeButton.isHidden = false
         navigationView.wayNameView.isHidden = true
         mapView.logoView.isHidden = true
     }
 
     //MARK: InstructionsBannerViewDelegate
-    func didTapInstructionsBanner(_ sender: BaseInstructionsBannerView) {
+    public func didTapInstructionsBanner(_ sender: BaseInstructionsBannerView) {
         if stepsViewController != nil {
             stepsViewController?.dismiss() {
                 self.stepsViewController = nil
@@ -624,7 +624,7 @@ extension RouteMapViewController: NavigationViewDelegate {
         }
     }
     
-    func didSwipeInstructionsBanner(_ sender: BaseInstructionsBannerView, swipeDirection direction: UISwipeGestureRecognizer.Direction) {
+    public func didSwipeInstructionsBanner(_ sender: BaseInstructionsBannerView, swipeDirection direction: UISwipeGestureRecognizer.Direction) {
         if direction == .down {
             displayPreviewInstructions()
             
