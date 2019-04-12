@@ -91,7 +91,7 @@ open class NavigationView: UIView {
         return stackView
     }()
     
-    public lazy var overviewButton = FloatingButton.rounded(image: Images.overview)
+    lazy var overviewButton = FloatingButton.rounded(image: Images.overview)
     lazy var muteButton = FloatingButton.rounded(image: Images.volumeUp, selectedImage: Images.volumeOff)
     lazy var reportButton = FloatingButton.rounded(image: Images.feedback)
     

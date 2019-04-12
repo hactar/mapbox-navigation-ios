@@ -106,9 +106,9 @@ extension RouteMapViewController: NavigationComponent {
 }
 
 
-public class RouteMapViewController: UIViewController {
+class RouteMapViewController: UIViewController {
 
-    public var navigationView: NavigationView { return view as! NavigationView }
+    var navigationView: NavigationView { return view as! NavigationView }
     var mapView: NavigationMapView { return navigationView.mapView }
     var statusView: StatusView { return navigationView.statusView }
     var reportButton: FloatingButton { return navigationView.reportButton }
@@ -227,12 +227,12 @@ public class RouteMapViewController: UIViewController {
     }
 
 
-    public override func loadView() {
+    override func loadView() {
         view = NavigationView(delegate: self)
         view.frame = parent?.view.bounds ?? UIScreen.main.bounds
     }
 
-    public override func viewDidLoad() {
+    override func viewDidLoad() {
         super.viewDidLoad()
         
         let mapView = self.mapView
@@ -266,7 +266,7 @@ public class RouteMapViewController: UIViewController {
         suspendNotifications()
     }
 
-    public override func viewWillAppear(_ animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
         navigationView.muteButton.isSelected = NavigationSettings.shared.voiceMuted
@@ -288,7 +288,7 @@ public class RouteMapViewController: UIViewController {
         }
     }
 
-    public override func viewDidAppear(_ animated: Bool) {
+    override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         annotatesSpokenInstructions = delegate?.mapViewControllerShouldAnnotateSpokenInstructions(self) ?? false
         showRouteIfNeeded()
@@ -296,7 +296,7 @@ public class RouteMapViewController: UIViewController {
         currentStepIndexMapped = router.routeProgress.currentLegProgress.stepIndex
     }
 
-    public override func viewWillDisappear(_ animated: Bool) {
+    override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         styleObservation = nil
     }
@@ -376,12 +376,12 @@ public class RouteMapViewController: UIViewController {
         parent.present(feedbackViewController, animated: true, completion: nil)
     }
 
-    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
         mapView.enableFrameByFrameCourseViewTracking(for: 3)
     }
 
-    public override func viewDidLayoutSubviews() {
+    override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         mapView.setContentInset(contentInset(forOverviewing: isInOverviewMode), animated: true)
         mapView.setNeedsUpdateConstraints()
@@ -576,7 +576,7 @@ public class RouteMapViewController: UIViewController {
 // MARK: - UIContentContainer
 
 extension RouteMapViewController {
-    public override func preferredContentSizeDidChange(forChildContentContainer container: UIContentContainer) {
+    override func preferredContentSizeDidChange(forChildContentContainer container: UIContentContainer) {
         navigationView.endOfRouteHeightConstraint?.constant = container.preferredContentSize.height
 
         UIView.animate(withDuration: 0.3, animations: view.layoutIfNeeded)
@@ -985,7 +985,7 @@ extension RouteMapViewController: StepsViewControllerDelegate {
         mapView.addArrow(route: router.route, legIndex: legIndex, stepIndex: stepIndex + 1)
     }
 
-    public func didDismissStepsViewController(_ viewController: StepsViewController) {
+    func didDismissStepsViewController(_ viewController: StepsViewController) {
         viewController.dismiss {
             self.stepsViewController = nil
             self.navigationView.instructionsBannerView.stepListIndicatorView.isHidden = false
