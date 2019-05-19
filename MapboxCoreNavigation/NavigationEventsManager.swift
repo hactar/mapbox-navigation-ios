@@ -36,15 +36,7 @@ open class NavigationEventsManager: NSObject {
     private var mobileEventsManager: MMEEventsManager!
 
     lazy var accessToken: String = {
-        guard let path = Bundle.main.path(forResource: "Info", ofType: "plist"),
-        let dict = NSDictionary(contentsOfFile: path) as? [String: AnyObject],
-        let token = dict["MGLMapboxAccessToken"] as? String else {
-            //we can assert here because if the token was passed in, it would of overriden this closure.
-            //we return an empty string so we don't crash in production (in keeping with behavior of `assert`)
-            assertionFailure("`accessToken` must be set in the Info.plist as `MGLMapboxAccessToken` or the `Route` passed into the `NavigationService` must have the `accessToken` property set.")
-            return ""
-        }
-        return token
+        return ""
     }()
     
     @objc public required init(dataSource source: EventsManagerDataSource?, accessToken possibleToken: String? = nil, mobileEventsManager: MMEEventsManager = .shared()) {
@@ -54,8 +46,6 @@ open class NavigationEventsManager: NSObject {
             accessToken = tokenOverride
         }
         self.mobileEventsManager = mobileEventsManager
-        start()
-        resumeNotifications()
     }
     
     deinit {
@@ -64,14 +54,10 @@ open class NavigationEventsManager: NSObject {
     }
     
     private func resumeNotifications() {
-        NotificationCenter.default.addObserver(self, selector: #selector(applicationWillTerminate(_:)), name: UIApplication.willTerminateNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(didChangeOrientation(_:)), name: UIDevice.orientationDidChangeNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(didChangeApplicationState(_:)), name: UIApplication.willEnterForegroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(didChangeApplicationState(_:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
     
     private func suspendNotifications() {
-        NotificationCenter.default.removeObserver(self)
+       
     }
     
     /**
@@ -80,15 +66,7 @@ open class NavigationEventsManager: NSObject {
     @objc public var delaysEventFlushing = true
 
     func start() {
-        let eventLoggingEnabled = UserDefaults.standard.bool(forKey: NavigationMetricsDebugLoggingEnabled)
-        
-        mobileEventsManager.isDebugLoggingEnabled = eventLoggingEnabled
-        mobileEventsManager.isMetricsEnabledInSimulator = true
-        mobileEventsManager.isMetricsEnabledForInUsePermissions = true
-        let userAgent = usesDefaultUserInterface ? "mapbox-navigation-ui-ios" : "mapbox-navigation-ios"
-        mobileEventsManager.initialize(withAccessToken: accessToken, userAgentBase: userAgent, hostSDKVersion: String(describing: Bundle.mapboxCoreNavigation.object(forInfoDictionaryKey: "CFBundleShortVersionString")!))
-        mobileEventsManager.disableLocationMetrics()
-        mobileEventsManager.sendTurnstileEvent()
+     
     }
     
     func navigationCancelEvent(rating potentialRating: Int? = nil, comment: String? = nil) -> NavigationEventDetails? {
@@ -191,54 +169,31 @@ open class NavigationEventsManager: NSObject {
     }
 
     public func sendCarPlayConnectEvent() {
-        let date = Date()
-        mobileEventsManager.enqueueEvent(withName: MMEventTypeNavigationCarplayConnect, attributes: [MMEEventKeyEvent: MMEventTypeNavigationCarplayConnect, MMEEventKeyCreated: date.ISO8601])
-        mobileEventsManager.flush()
+
     }
 
     public func sendCarPlayDisconnectEvent() {
-        let date = Date()
-        mobileEventsManager.enqueueEvent(withName: MMEventTypeNavigationCarplayDisconnect, attributes: [MMEEventKeyEvent: MMEventTypeNavigationCarplayDisconnect, MMEEventKeyCreated: date.ISO8601])
-        mobileEventsManager.flush()
+
     }
     
     func sendRouteRetrievalEvent() {
-        guard let attributes = try? navigationRouteRetrievalEvent()?.asDictionary() else { return }
-        mobileEventsManager.enqueueEvent(withName: NavigationEventTypeRouteRetrieval, attributes: attributes ?? [:])
-        mobileEventsManager.flush()
+
     }
 
     func sendDepartEvent() {
-        guard let attributes = try? navigationDepartEvent()?.asDictionary() else { return }
-        mobileEventsManager.enqueueEvent(withName: MMEEventTypeNavigationDepart, attributes: attributes ?? [:])
-        mobileEventsManager.flush()
+
     }
     
     func sendArriveEvent() {
-        guard let attributes = try? navigationArriveEvent()?.asDictionary() else { return }
-        mobileEventsManager.enqueueEvent(withName: MMEEventTypeNavigationArrive, attributes: attributes ?? [:])
-        mobileEventsManager.flush()
+
     }
     
     func sendCancelEvent(rating: Int? = nil, comment: String? = nil) {
-        guard let attributes = try? navigationCancelEvent(rating: rating, comment: comment)?.asDictionary() else { return }
-        mobileEventsManager.enqueueEvent(withName: MMEEventTypeNavigationCancel, attributes: attributes ?? [:])
-        mobileEventsManager.flush()
+
     }
     
     func sendFeedbackEvents(_ events: [CoreFeedbackEvent]) {
-        events.forEach { event in
-            // remove from outstanding event queue
-            if let index = outstandingFeedbackEvents.index(of: event) {
-                outstandingFeedbackEvents.remove(at: index)
-            }
-            
-            let eventName = event.eventDictionary["event"] as! String
-            let eventDictionary = navigationFeedbackEventWithLocationsAdded(event: event)
-            
-            mobileEventsManager.enqueueEvent(withName: eventName, attributes: eventDictionary)
-        }
-        mobileEventsManager.flush()
+
     }
     
     func enqueueFeedbackEvent(type: FeedbackType, description: String?) -> UUID? {
