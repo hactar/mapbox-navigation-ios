@@ -103,7 +103,7 @@ open class FloatingButton: Button {
         }
     }
     
-    class func rounded<T: FloatingButton>(image: UIImage, selectedImage: UIImage? = nil, size: CGSize = FloatingButton.buttonSize) -> T {
+    class func rounded<T: FloatingButton>(image: UIImage? = nil, selectedImage: UIImage? = nil, size: CGSize = FloatingButton.buttonSize) -> T {
         let button = T.init(type: .custom)
         button.translatesAutoresizingMaskIntoConstraints = false
         button.constrainedSize = size
@@ -250,9 +250,20 @@ open class StylableView: UIView {
             layer.borderWidth = borderWidth
         }
     }
+    
     @objc dynamic var cornerRadius: CGFloat = 0.0 {
         didSet {
             layer.cornerRadius = cornerRadius
+        }
+    }
+    
+    @objc dynamic public var borderColor: UIColor? {
+        get {
+            guard let color = layer.borderColor else { return nil }
+            return UIColor(cgColor: color)
+        }
+        set {
+            layer.borderColor = newValue?.cgColor
         }
     }
 }
@@ -561,18 +572,18 @@ open class ManeuverContainerView: UIView {
     }
 }
 
-/// :nodoc:
-@objc(MBInstructionsBannerContentView)
-open class InstructionsBannerContentView: UIView { }
 
 /// :nodoc:
-@objc(MBBottomBannerContainerView)
-open class BottomBannerContainerView: UIView { }
+@objc(MBBannerContainerView)
+open class BannerContainerView: UIView { }
+
+/// :nodoc:
+@objc(MBTopBannerView)
+open class TopBannerView: UIView { }
 
 /// :nodoc:
 @objc(MBBottomBannerView)
 open class BottomBannerView: UIView { }
-
 
 /// :nodoc:
 class NavigationAnnotation: MGLPointAnnotation { }
