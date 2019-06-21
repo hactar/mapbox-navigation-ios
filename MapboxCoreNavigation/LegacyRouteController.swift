@@ -368,6 +368,7 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
                 return
             }
 
+			strongSelf.isRerouting = false
             if let error = error {
                 strongSelf.delegate?.router?(strongSelf, didFailToRerouteWith: error)
                 NotificationCenter.default.post(name: .routeControllerDidFailToReroute, object: self, userInfo: [
@@ -377,7 +378,6 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
             }
 
             guard let route = route else { return }
-            strongSelf.isRerouting = false
             strongSelf._routeProgress = RouteProgress(route: route, legIndex: 0)
             strongSelf._routeProgress.currentLegProgress.stepIndex = 0
             strongSelf.announce(reroute: route, at: location, proactive: false)
