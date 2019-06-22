@@ -434,8 +434,8 @@ extension NavigationViewController: RouteMapViewControllerDelegate {
 //MARK: - NavigationServiceDelegate
 extension NavigationViewController: NavigationServiceDelegate {
     
-
-    @objc public func navigationService(_ service: NavigationService, shouldRerouteFrom location: CLLocation) -> Bool {
+    // Bikemap Change: make open to allow override
+    @objc open func navigationService(_ service: NavigationService, shouldRerouteFrom location: CLLocation) -> Bool {
         let defaultBehavior = RouteController.DefaultBehavior.shouldRerouteFromLocation
         let componentsWantReroute = navigationComponents.allSatisfy { $0.navigationService?(service, shouldRerouteFrom: location) ?? defaultBehavior }
         return componentsWantReroute && (delegate?.navigationViewController?(self, shouldRerouteFrom: location) ?? defaultBehavior)
@@ -515,6 +515,7 @@ extension NavigationViewController: NavigationServiceDelegate {
         }
     }
     
+
     @objc public func navigationService(_ service: NavigationService, didPassVisualInstructionPoint instruction: VisualInstructionBanner, routeProgress: RouteProgress) {
         for component in navigationComponents {
             component.navigationService?(service, didPassVisualInstructionPoint: instruction, routeProgress: routeProgress)
@@ -530,7 +531,8 @@ extension NavigationViewController: NavigationServiceDelegate {
     }
     
 
-    @objc public func navigationService(_ service: NavigationService, didArriveAt waypoint: Waypoint) -> Bool {
+    // Bikemap Change: make open to allow override
+    @objc open func navigationService(_ service: NavigationService, didArriveAt waypoint: Waypoint) -> Bool {
         let defaultBehavior = RouteController.DefaultBehavior.didArriveAtWaypoint
         let componentsWantAdvance = navigationComponents.allSatisfy { $0.navigationService?(service, didArriveAt: waypoint) ?? defaultBehavior }
         let advancesToNextLeg = componentsWantAdvance && (delegate?.navigationViewController?(self, didArriveAt: waypoint) ?? defaultBehavior)
