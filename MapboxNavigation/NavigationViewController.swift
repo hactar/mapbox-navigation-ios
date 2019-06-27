@@ -471,7 +471,7 @@ extension NavigationViewController: NavigationServiceDelegate {
         return componentsWantToDiscard && (delegate?.navigationViewController?(self, shouldDiscard: location) ?? defaultBehavior)
     }
     
-    @objc public func navigationService(_ service: NavigationService, didUpdate progress: RouteProgress, with location: CLLocation, rawLocation: CLLocation) {
+    @objc open func navigationService(_ service: NavigationService, didUpdate progress: RouteProgress, with location: CLLocation, rawLocation: CLLocation) {
         
         //Check to see if we're in a tunnel.
         checkTunnelState(at: location, along: progress)
