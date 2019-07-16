@@ -550,7 +550,7 @@ extension NavigationViewController: NavigationServiceDelegate {
         mapController.showEndOfRoute(duration: duration, completion: completionHandler)
     }
 
-    @objc public func navigationService(_ service: NavigationService, willBeginSimulating progress: RouteProgress, becauseOf reason: SimulationIntent) {
+    @objc open func navigationService(_ service: NavigationService, willBeginSimulating progress: RouteProgress, becauseOf reason: SimulationIntent) {
         for component in navigationComponents {
             component.navigationService?(service, willBeginSimulating: progress, becauseOf: reason)
         }
