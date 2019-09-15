@@ -179,13 +179,13 @@ public class StatusView: UIControl {
             let fireTime = DispatchTime.now() + delay
             DispatchQueue.main.asyncAfter(deadline: fireTime, execute: {
                 guard !self.isHidden, self.isCurrentlyVisible else { return }
+                
                 self.activityIndicatorView.stopAnimating()
                 UIView.defaultAnimation(0.3, delay: 0, animations: hide, completion: { _ in
                     self.isCurrentlyVisible = false
                 })
             })
         }
-
         if animated {
             animate()
         } else {
