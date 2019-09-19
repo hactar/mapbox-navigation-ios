@@ -599,13 +599,7 @@ extension NavigationViewController: NavigationServiceDelegate {
 extension NavigationViewController: StyleManagerDelegate {
     @objc(locationForStyleManager:)
     public func location(for styleManager: StyleManager) -> CLLocation? {
-        if let location = navigationService.router.location {
-            return location
-        } else if let firstCoord = route.coordinates?.first {
-            return CLLocation(latitude: firstCoord.latitude, longitude: firstCoord.longitude)
-        } else {
-            return nil
-        }
+        return nil
     }
     
     @objc(styleManager:didApplyStyle:)
