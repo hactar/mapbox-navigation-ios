@@ -4,10 +4,10 @@ import MapboxDirections
 
 let NavigationEventTypeRouteRetrieval = "mobile.performance_trace"
 
- /**
+/**
  The `EventsManagerDataSource` protocol declares values required for recording route following events.
  */
-@objc public protocol EventsManagerDataSource: class {
+public protocol EventsManagerDataSource: class {
     var routeProgress: RouteProgress { get }
     var router: Router! { get }
     var desiredAccuracy: CLLocationAccuracy { get }
@@ -20,9 +20,7 @@ public typealias EventsManager = NavigationEventsManager
 /**
  The `NavigationEventsManager` is responsible for being the liaison between MapboxCoreNavigation and the Mapbox telemetry framework.
  */
-@objc(MBNavigationEventsManager)
 open class NavigationEventsManager: NSObject {
-
     var sessionState: SessionState?
     
     var outstandingFeedbackEvents = [CoreFeedbackEvent]()
@@ -33,8 +31,8 @@ open class NavigationEventsManager: NSObject {
      Indicates whether the application depends on MapboxNavigation in addition to MapboxCoreNavigation.
      */
     var usesDefaultUserInterface = {
-        // Assumption: MapboxNavigation.framework includes NavigationViewController and exposes it to the Objective-C runtime as MBNavigationViewController.
-        return NSClassFromString("MBNavigationViewController") != nil
+        // Assumption: MapboxNavigation.framework includes NavigationViewController and exposes it to the Objective-C runtime as MapboxNavigation.NavigationViewController.
+        return NSClassFromString("MapboxNavigation.NavigationViewController") != nil
     }()
 
     /// :nodoc: the internal lower-level mobile events manager is an implementation detail which should not be manipulated directly
@@ -44,7 +42,7 @@ open class NavigationEventsManager: NSObject {
         return ""
     }()
     
-    @objc public required init(dataSource source: EventsManagerDataSource?, accessToken possibleToken: String? = nil, mobileEventsManager: MMEEventsManager = .shared()) {
+    public required init(dataSource source: EventsManagerDataSource?, accessToken possibleToken: String? = nil, mobileEventsManager: MMEEventsManager = .shared()) {
         dataSource = source
         super.init()
         if let tokenOverride = possibleToken {
@@ -68,7 +66,7 @@ open class NavigationEventsManager: NSObject {
     /**
      When set to `false`, flushing of telemetry events is not delayed. Is set to `true` by default.
      */
-    @objc public var delaysEventFlushing = true
+    public var delaysEventFlushing = true
 
     func start() {
      
@@ -202,14 +200,14 @@ open class NavigationEventsManager: NSObject {
     }
     
     func enqueueFeedbackEvent(type: FeedbackType, description: String?) -> UUID? {
-        guard let eventDictionary = try? navigationFeedbackEvent(type: type, description: description)?.asDictionary() else { return nil }
+        guard let eventDictionary = (try? navigationFeedbackEvent(type: type, description: description)?.asDictionary()) as [String: Any]?? else { return nil }
         let event = FeedbackEvent(timestamp: Date(), eventDictionary: eventDictionary ?? [:])
         outstandingFeedbackEvents.append(event)
         return event.id
     }
 
     func enqueueRerouteEvent() {
-        guard let eventDictionary = try? navigationRerouteEvent()?.asDictionary() else { return }
+        guard let eventDictionary = (try? navigationRerouteEvent()?.asDictionary()) as [String: Any]?? else { return }
         let timestamp = dataSource?.router.location?.timestamp ?? Date()
         
         sessionState?.lastRerouteDate = timestamp
@@ -228,7 +226,7 @@ open class NavigationEventsManager: NSObject {
     }
 
     func enqueueFoundFasterRouteEvent() {
-        guard let eventDictionary = try? navigationRerouteEvent(eventType: FasterRouteFoundEvent)?.asDictionary() else { return }
+        guard let eventDictionary = (try? navigationRerouteEvent(eventType: FasterRouteFoundEvent)?.asDictionary()) as [String: Any]?? else { return }
 
         let timestamp = Date()
         sessionState?.lastRerouteDate = timestamp
@@ -270,7 +268,7 @@ open class NavigationEventsManager: NSObject {
      
      You can then call `updateFeedback(uuid:type:source:description:)` with the returned feedback UUID to attach any additional metadata to the feedback.
      */
-    @objc public func recordFeedback(type: FeedbackType = .general, description: String? = nil) -> UUID? {
+    public func recordFeedback(type: FeedbackType = .general, description: String? = nil) -> UUID? {
         return enqueueFeedbackEvent(type: type, description: description)
     }
     
@@ -279,7 +277,7 @@ open class NavigationEventsManager: NSObject {
      
      Note that feedback is sent 20 seconds after being recorded, so you should promptly update the feedback metadata after the user discards any feedback UI.
      */
-    @objc public func updateFeedback(uuid: UUID, type: FeedbackType, source: FeedbackSource, description: String?) {
+    public func updateFeedback(uuid: UUID, type: FeedbackType, source: FeedbackSource, description: String?) {
         if let lastFeedback = outstandingFeedbackEvents.first(where: { $0.id == uuid}) as? FeedbackEvent {
             lastFeedback.update(type: type, source: source, description: description)
         }
@@ -288,8 +286,8 @@ open class NavigationEventsManager: NSObject {
     /**
      Discard a recorded feedback event, for example if you have a custom feedback UI and the user canceled feedback.
      */
-    @objc public func cancelFeedback(uuid: UUID) {
-        if let index = outstandingFeedbackEvents.index(where: {$0.id == uuid}) {
+    public func cancelFeedback(uuid: UUID) {
+        if let index = outstandingFeedbackEvents.firstIndex(where: {$0.id == uuid}) {
             outstandingFeedbackEvents.remove(at: index)
         }
     }
@@ -329,7 +327,7 @@ open class NavigationEventsManager: NSObject {
         latestReroute?.update(newRoute: route)
     }
     
-    @objc func update(progress: RouteProgress) {
+    func update(progress: RouteProgress) {
         defer {
             // ensure we always flush, irrespective of how the method exits
             sendOutstandingFeedbackEvents(forceAll: false)

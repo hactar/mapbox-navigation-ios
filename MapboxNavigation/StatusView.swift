@@ -1,23 +1,23 @@
 import UIKit
 
 /// :nodoc:
-@objc public protocol DeprecatedStatusViewDelegate: class {}
+public protocol DeprecatedStatusViewDelegate: class {}
 
 /**
  A protocol for listening in on changes made to a `StatusView`.
  */
 @available(*, deprecated, message: "Add a target to StatusView for UIControl.Event.valueChanged instead.")
-@objc public protocol StatusViewDelegate: DeprecatedStatusViewDelegate {
+public protocol StatusViewDelegate: DeprecatedStatusViewDelegate {
     /**
      Indicates a value in the status view has changed by the user interacting with it.
      */
     @available(*, deprecated, message: "Add a target to StatusView for UIControl.Event.valueChanged instead.")
-    @objc optional func statusView(_ statusView: StatusView, valueChangedTo value: Double)
+    func statusView(_ statusView: StatusView, valueChangedTo value: Double)
 }
 
 /// :nodoc:
-@objc private protocol StatusViewDelegateDeprecations {
-    @objc optional func statusView(_ statusView: StatusView, valueChangedTo value: Double)
+private protocol StatusViewDelegateDeprecations {
+    func statusView(_ statusView: StatusView, valueChangedTo value: Double)
 }
 
 /**
@@ -26,18 +26,16 @@ import UIKit
  A translucent bar that responds to tap and swipe gestures, similar to a scrubber or stepper control, and expands and collapses to maximize screen real estate.
  */
 @IBDesignable
-@objc(MBStatusView)
 public class StatusView: UIControl {
-
     weak var activityIndicatorView: UIActivityIndicatorView!
     weak var textLabel: UILabel!
-    @objc public weak var delegate: DeprecatedStatusViewDelegate?
+    public weak var delegate: DeprecatedStatusViewDelegate?
     var panStartPoint: CGPoint?
 
     var isCurrentlyVisible: Bool = false
 
     @available(*, deprecated, renamed: "isEnabled")
-    @objc public var canChangeValue: Bool {
+    public var canChangeValue: Bool {
         get {
             return isEnabled
         }
@@ -49,7 +47,7 @@ public class StatusView: UIControl {
     var value: Double = 0 {
         didSet {
             sendActions(for: .valueChanged)
-            (delegate as? StatusViewDelegateDeprecations)?.statusView?(self, valueChangedTo: value)
+            (delegate as? StatusViewDelegateDeprecations)?.statusView(self, valueChangedTo: value)
         }
     }
 
@@ -115,17 +113,15 @@ public class StatusView: UIControl {
 
         if sender.state == .ended {
             let incrementer: Double
-            switch UIApplication.shared.userInterfaceLayoutDirection {
-            case .leftToRight:
-                incrementer = location.x > bounds.midX ? 0.1 : -0.1
-            case .rightToLeft:
+            if UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft {
                 incrementer = location.x < bounds.midX ? 0.1 : -0.1
+            } else {
+                incrementer = location.x > bounds.midX ? 0.1 : -0.1
             }
             value = min(max(value + incrementer, 0), 1)
         }
     }
-
-
+    
     public func showStatus(title: String, spinner spin: Bool = false, duration: TimeInterval, animated: Bool = true, interactive: Bool = false) {
         show(title, showSpinner: spin, interactive: interactive)
         guard duration < .infinity else { return }
@@ -137,8 +133,7 @@ public class StatusView: UIControl {
         let title = String.localizedStringWithFormat(format, NumberFormatter.localizedString(from: speed as NSNumber, number: .decimal))
         showStatus(title: title, duration: .infinity, interactive: true)
     }
-
-
+    
     /**
      Shows the status view with an optional spinner.
      */
@@ -168,7 +163,6 @@ public class StatusView: UIControl {
      Hides the status view.
      */
     public func hide(delay: TimeInterval = 0, animated: Bool = true) {
-
         let hide = {
             self.isHidden = true
             self.textLabel.alpha = 0

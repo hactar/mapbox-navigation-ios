@@ -1,7 +1,41 @@
 # Changes to the Mapbox Navigation SDK for iOS
 
 ## master
+
+### Packaging
+* This library can no longer be used in applications written in pure Objective-C. If you need to use this library’s public API from Objective-C code, you will need to implement a wrapper in Swift that bridges the subset of the API you need from Swift to Objective-C. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+
+### User interface
+* `UserCourseView` is now a type alias of the `UIView` class and the `CourseUpdatable` protocol rather than a protocol in its own right. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* Renamed `NavigationMapView.showRoutes(_:legIndex:)` to `NavigationMapView.show(_:legIndex:)`. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* Renamed `NavigationMapView.showWaypoints(_:legIndex:)` to `NavigationMapView.showWaypoints(on:legIndex:)`. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* Renamed `MapboxVoiceController.play(_:)` to `MapboxVoiceController.play(instruction:data:)`. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* When Dark Mode is enabled, user notifications now draw maneuver icons in white instead of black for better contrast. ([#2283](https://github.com/mapbox/mapbox-navigation-ios/pull/2283))
+* Fixed an issue where a black background could be rendered in a `ManeuverView` under the arrow regardless of the `backgroundColor` set on the view. ([#2279](https://github.com/mapbox/mapbox-navigation-ios/pull/2279))
+* Fixed an issue where the wrong style was applied to exit numbers in the top banner and for subsequent maneuver banners in CarPlay, resulting in poor contrast. ([#2161](https://github.com/mapbox/mapbox-navigation-ios/issues/2161))
+
+### Error handling
+* The `MapboxVoiceController` and `RouteVoiceController` now emit `SpeechError`s instead of an `NSError` object. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* Added the `VoiceControllerDelegate.voiceController(_:didFallBackTo:becauseOf:)` method for detecting when the voice controller falls back to `AVSpeechSynthesizer`. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+
+### Other changes
+* Since pure Swift protocols cannot have optional methods, various delegate protocols now provide default no-op implementations for all their methods and conform to the `UnimplementedLogging` protocol, which can inform you at runtime when a delegate method is called but has not been implemented. Messages are sent through Apple Unified Logging and can be disabled globally through [Unifed Logging](https://developer.apple.com/documentation/os/logging#2878594), or by overriding the delegate function with a no-op implementation. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* Renamed `RouteProgress.nearbyCoordinates` to `RouteProgress.nearbyShape`. ([#2275](https://github.com/mapbox/mapbox-navigation-ios/pull/2275))
+* Removed `RouteLegProgress.nearbyCoordinates`. ([#2275](https://github.com/mapbox/mapbox-navigation-ios/pull/2275))
+* Added the `RouteLegProgress.currentSpeedLimit` property. ([#2114](https://github.com/mapbox/mapbox-navigation-ios/pull/2114))
+
+## v0.38.1
+
+* Fixed an issue where user notifications displayed right turn arrows for left turn maneuvers. ([#2270](https://github.com/mapbox/mapbox-navigation-ios/pull/2270))
+
+## v0.38.0
+
+* This library now requires a minimum deployment target of iOS 10.0 or above. iOS 9._x_ is no longer supported. ([#2206](https://github.com/mapbox/mapbox-navigation-ios/pull/2206))
+* Fixed an issue where the user puck appeared farther up the screen than the actual user location even while the camera pivoted around the user location at turns. ([#2211](https://github.com/mapbox/mapbox-navigation-ios/pull/2211))
+* Lock screen notifications are presented more reliably and more closely resemble instruction banners. ([#2206](https://github.com/mapbox/mapbox-navigation-ios/pull/2206))
 * Fixed an issue where manually incrementing `RouteProgress.legIndex` could lead to undefined behavior. ([#2229](https://github.com/mapbox/mapbox-navigation-ios/pull/2229))
+* `DistanceFormatter` now inherits directly from `Formatter` rather than `LengthFormatter`. ([#2206](https://github.com/mapbox/mapbox-navigation-ios/pull/2206))
+* Fixed an issue where `DistanceFormatter.attributedString(for:withDefaultAttributes:)` set `NSAttributedString.Key.quantity` to the original distance value rather than the potentially rounded value represented by the attributed string. ([#2206](https://github.com/mapbox/mapbox-navigation-ios/pull/2206))
 
 ## v0.37.0
 
@@ -135,7 +169,6 @@
 
 * You can now customize the control layer of the map template comprising of the navigation bar's leading and trailing buttons and the map buttons. ([#1962](https://github.com/mapbox/mapbox-navigation-ios/pull/1962))
 * Added new map buttons in the `CarPlayManager` and the `CarPlayMapViewController`. You can now access map buttons that perform built-in actions on the map by accessing read-only properties such as: `CarPlayManager.exitButton`, `CarPlayManager.muteButton`, `CarPlayManager.showFeedbackButton`, `CarPlayManager.overviewButton`, `CarPlayMapViewController.recenterButton`, `CarPlayMapViewController.zoomInButton`, `CarPlayMapViewController.zoomOutButton`, `CarPlayMapViewController.panningInterfaceDisplayButton(for:)`, `CarPlayMapViewController.panningInterfaceDismissalButton(for:)`. ([#1962](https://github.com/mapbox/mapbox-navigation-ios/pull/1962))
-
 
 ### Other changes
 
@@ -619,7 +652,6 @@
 ## Voice guidance
 
 * Exposes `RouteVoiceController.speak(_:)` which would allow custom subclass of MapboxVoiceController to override this method and pass a modified SpokenInstruction to our superclass implementation.
-
 
 ## v0.13.1 (February 7, 2018)
 

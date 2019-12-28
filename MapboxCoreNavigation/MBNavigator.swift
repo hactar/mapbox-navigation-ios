@@ -3,7 +3,6 @@ import MapboxNavigationNative
 import CoreLocation
 
 extension MBFixLocation {
-    
     convenience init(_ location: CLLocation) {
         self.init(coordinate: location.coordinate,
                   time: location.timestamp,
@@ -16,7 +15,6 @@ extension MBFixLocation {
 }
 
 extension MBRouteState: CustomStringConvertible {
-    
     public var description: String {
         switch self {
         case .invalid:
@@ -31,6 +29,8 @@ extension MBRouteState: CustomStringConvertible {
             return "offRoute"
         case .stale:
             return "stale"
+        @unknown default:
+            fatalError("Indescribable route state \(rawValue)")
         }
     }
 }

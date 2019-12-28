@@ -3,13 +3,12 @@ import MapboxCoreNavigation
 import MapboxNavigation
 import MapboxDirections
 import UserNotifications
-
+import AVKit
 
 private typealias RouteRequestSuccess = (([Route]) -> Void)
-private typealias RouteRequestFailure = ((NSError) -> Void)
+private typealias RouteRequestFailure = ((Error) -> Void)
 
 class ViewController: UIViewController {
-    
     // MARK: - IBOutlets
     @IBOutlet weak var longPressHintView: UIView!
     @IBOutlet weak var simulationButton: UIButton!
@@ -39,11 +38,13 @@ class ViewController: UIViewController {
     var routes: [Route]? {
         didSet {
             startButton.isEnabled = (routes?.count ?? 0 > 0)
-            guard let routes = routes,
-                  let current = routes.first else { mapView?.removeRoutes(); return }
+            guard let routes = routes, let current = routes.first else {
+                mapView?.removeRoutes()
+                return
+            }
 
-            mapView?.showRoutes(routes)
-            mapView?.showWaypoints(current)
+            mapView?.show(routes)
+            mapView?.showWaypoints(on: current)
         }
     }
     
@@ -84,7 +85,6 @@ class ViewController: UIViewController {
             appDelegate.currentAppRootViewController = self
         }
     }
-    
     
     // MARK: - Lifecycle Methods
 
@@ -139,11 +139,9 @@ class ViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
-        if #available(iOS 10.0, *) {
-            UNUserNotificationCenter.current().requestAuthorization(options: [.badge, .alert, .sound]) { _,_ in
-                DispatchQueue.main.async {
-                    CLLocationManager().requestWhenInUseAuthorization()
-                }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.badge, .alert, .sound]) { _, _ in
+            DispatchQueue.main.async {
+                CLLocationManager().requestWhenInUseAuthorization()
             }
         }
     }
@@ -173,7 +171,6 @@ class ViewController: UIViewController {
 
         requestRoute()
     }
-
 
     // MARK: - IBActions
 
@@ -208,16 +205,13 @@ class ViewController: UIViewController {
     }
 
     fileprivate func requestRoute(with options: RouteOptions, success: @escaping RouteRequestSuccess, failure: RouteRequestFailure?) {
-
-        let handler: Directions.RouteCompletionHandler = { (waypoints, routes, error) in
+        // Calculate route offline if an offline version is selected
+        let shouldUseOfflineRouting = Settings.selectedOfflineVersion != nil
+        Settings.directions.calculate(options, offline: shouldUseOfflineRouting) { (waypoints, routes, error) in
             if let error = error { failure?(error) }
             guard let routes = routes else { return }
             return success(routes)
         }
-
-        // Calculate route offline if an offline version is selected
-        let shouldUseOfflineRouting = Settings.selectedOfflineVersion != nil
-        Settings.directions.calculate(options, offline: shouldUseOfflineRouting, completionHandler: handler)
     }
 
     // MARK: Basic Navigation
@@ -271,7 +265,7 @@ class ViewController: UIViewController {
         customViewController.userRoute = route
 
         let destination = MGLPointAnnotation()
-        destination.coordinate = route.coordinates!.last!
+        destination.coordinate = route.shape!.coordinates.last!
         customViewController.destination = destination
         customViewController.simulateLocation = simulationButton.isSelected
 
@@ -305,7 +299,6 @@ class ViewController: UIViewController {
         presentAndRemoveMapview(navigationViewController, completion: beginCarPlayNavigation)
     }
     
-
     func navigationService(route: Route) -> NavigationService {
         let simulate = simulationButton.isSelected
         let mode: SimulationMode = simulate ? .always : .onPoorGPS
@@ -368,10 +361,10 @@ extension ViewController: MGLMapViewDelegate {
         
         self.mapView?.localizeLabels()
         
-        if let routes = routes, let currentRoute = routes.first, let coords = currentRoute.coordinates {
-            mapView.setVisibleCoordinateBounds(MGLPolygon(coordinates: coords, count: currentRoute.coordinateCount).overlayBounds, animated: false)
-            self.mapView?.showRoutes(routes)
-            self.mapView?.showWaypoints(currentRoute)
+        if let routes = routes, let currentRoute = routes.first, let coords = currentRoute.shape?.coordinates {
+            mapView.setVisibleCoordinateBounds(MGLPolygon(coordinates: coords, count: UInt(coords.count)).overlayBounds, animated: false)
+            self.mapView?.show(routes)
+            self.mapView?.showWaypoints(on: currentRoute)
         }
     }
 }
@@ -389,7 +382,7 @@ extension ViewController: NavigationMapViewDelegate {
 
     func navigationMapView(_ mapView: NavigationMapView, didSelect route: Route) {
         guard let routes = routes else { return }
-        guard let index = routes.index(where: { $0 == route }) else { return }
+        guard let index = routes.firstIndex(where: { $0 === route }) else { return }
         self.routes!.remove(at: index)
         self.routes!.insert(route, at: 0)
     }
@@ -412,10 +405,16 @@ extension ViewController: NavigationMapViewDelegate {
 // MARK: VoiceControllerDelegate methods
 // To use these delegate methods, set the `VoiceControllerDelegate` on your `VoiceController`.
 extension ViewController: VoiceControllerDelegate {
-    // Called when there is an error with speaking a voice instruction.
-    func voiceController(_ voiceController: RouteVoiceController, spokenInstructionsDidFailWith error: Error) {
-        print(error.localizedDescription)
+    // called when there is an error that requires the speech controller to fall back to a native engine.
+    func voiceController(_ voiceController: RouteVoiceController, didFallBackTo synthesizer: AVSpeechSynthesizer, error: SpeechError) {
+        print(error)
     }
+    
+    // Called when there is an error with speaking a voice instruction.
+    func voiceController(_ voiceController: RouteVoiceController, spokenInstructionsDidFailWith error: SpeechError) {
+        print(error)
+    }
+    
     // Called when an instruction is interrupted by a new voice instruction.
     func voiceController(_ voiceController: RouteVoiceController, didInterrupt interruptedInstruction: SpokenInstruction, with interruptingInstruction: SpokenInstruction) {
         print(interruptedInstruction.text, interruptingInstruction.text)
@@ -434,7 +433,6 @@ extension ViewController: VoiceControllerDelegate {
     }
     
     func navigationViewController(_ navigationViewController: NavigationViewController, shouldRerouteFrom location: CLLocation) -> Bool {
-        
         let shouldUseOfflineRouting = Settings.selectedOfflineVersion != nil
         
         guard shouldUseOfflineRouting == true else {
@@ -465,7 +463,7 @@ extension ViewController: WaypointConfirmationViewControllerDelegate {
     func confirmationControllerDidConfirm(_ confirmationController: WaypointConfirmationViewController) {
         confirmationController.dismiss(animated: true, completion: {
             guard let navigationViewController = self.presentedViewController as? NavigationViewController,
-                  let navService = navigationViewController.navigationService else { return }
+                let navService = navigationViewController.navigationService else { return }
 
             let router = navService.router!
             guard router.route.legs.count > router.routeProgress.legIndex + 1 else { return }
@@ -513,11 +511,9 @@ extension ViewController: NavigationViewControllerDelegate {
     }
 }
 
-
 // Mark: VisualInstructionDelegate
 extension ViewController: VisualInstructionDelegate {
     func label(_ label: InstructionLabel, willPresent instruction: VisualInstruction, as presented: NSAttributedString) -> NSAttributedString? {
-        
         // Uncomment to mutate the instruction shown in the top instruction banner
         // let range = NSRange(location: 0, length: presented.length)
         // let mutable = NSMutableAttributedString(attributedString: presented)

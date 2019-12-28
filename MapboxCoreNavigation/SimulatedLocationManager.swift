@@ -27,8 +27,6 @@ fileprivate class SimulatedLocation: CLLocation {
  
  The route will be replaced upon a `RouteControllerDidReroute` notification.
  */
-
-@objc(MBSimulatedLocationManager)
 open class SimulatedLocationManager: NavigationLocationManager {
     internal var currentDistance: CLLocationDistance = 0
     fileprivate var currentSpeed: CLLocationSpeed = 30
@@ -37,14 +35,14 @@ open class SimulatedLocationManager: NavigationLocationManager {
     fileprivate var timer: DispatchTimer!
     
     fileprivate var locations: [SimulatedLocation]!
-    fileprivate var routeLine = [CLLocationCoordinate2D]()
+    fileprivate var routeShape: Polyline!
     
     /**
      Specify the multiplier to use when calculating speed based on the RouteLeg’s `expectedSegmentTravelTimes`.
      */
-    @objc public var speedMultiplier: Double = 1
+    public var speedMultiplier: Double = 1
     fileprivate var simulatedLocation: CLLocation?
-    @objc override open var location: CLLocation? {
+    override open var location: CLLocation? {
         get {
             return simulatedLocation
         }
@@ -65,7 +63,7 @@ open class SimulatedLocationManager: NavigationLocationManager {
         copy.simulatedLocation = simulatedLocation
         copy.currentSpeed = currentSpeed
         copy.locations = locations
-        copy.routeLine = routeLine
+        copy.routeShape = routeShape
         copy.speedMultiplier = speedMultiplier
         return copy
     }
@@ -78,7 +76,7 @@ open class SimulatedLocationManager: NavigationLocationManager {
      - parameter route: The initial route.
      - returns: A `SimulatedLocationManager`
      */
-    @objc public init(route: Route) {
+    public init(route: Route) {
         super.init()
         commonInit(for: route, currentDistance: 0, currentSpeed: 30)
     }
@@ -89,14 +87,13 @@ open class SimulatedLocationManager: NavigationLocationManager {
      - parameter routeProgress: The routeProgress of the current route.
      - returns: A `SimulatedLocationManager`
      */
-    @objc public init(routeProgress: RouteProgress) {
+    public init(routeProgress: RouteProgress) {
         super.init()
         let currentDistance = calculateCurrentDistance(routeProgress.distanceTraveled)
         commonInit(for: routeProgress.route, currentDistance: currentDistance, currentSpeed: 0)
     }
 
     private func commonInit(for route: Route, currentDistance: CLLocationDistance, currentSpeed: CLLocationSpeed) {
-        
         self.currentSpeed = currentSpeed
         self.currentDistance = currentDistance
         self.route = route
@@ -110,9 +107,9 @@ open class SimulatedLocationManager: NavigationLocationManager {
     }
     
     private func reset() {
-        if let coordinates = route?.coordinates {
-            routeLine = coordinates
-            locations = coordinates.simulatedLocationsWithTurnPenalties()
+        if let shape = route?.shape {
+            routeShape = shape
+            locations = shape.coordinates.simulatedLocationsWithTurnPenalties()
         }
     }
     
@@ -121,7 +118,7 @@ open class SimulatedLocationManager: NavigationLocationManager {
     }
     
     @objc private func progressDidChange(_ notification: Notification) {
-        routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as? RouteProgress
+        routeProgress = notification.userInfo![RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress
     }
     
     @objc private func didReroute(_ notification: Notification) {
@@ -147,10 +144,8 @@ open class SimulatedLocationManager: NavigationLocationManager {
         timer.disarm()
     }
     
-    @objc internal func tick() {
-        let polyline = Polyline(routeLine)
-        
-        guard let newCoordinate = polyline.coordinateFromStart(distance: currentDistance) else {
+    internal func tick() {
+        guard let polyline = routeShape, let newCoordinate = polyline.coordinateFromStart(distance: currentDistance) else {
             return
         }
         
@@ -166,11 +161,11 @@ open class SimulatedLocationManager: NavigationLocationManager {
         
         // Simulate speed based on expected segment travel time
         if let expectedSegmentTravelTimes = routeProgress?.currentLeg.expectedSegmentTravelTimes,
-            let coordinates = routeProgress?.route.coordinates,
-            let closestCoordinateOnRoute = Polyline(routeProgress!.route.coordinates!).closestCoordinate(to: newCoordinate),
-            let nextCoordinateOnRoute = coordinates.after(element: coordinates[closestCoordinateOnRoute.index]),
+            let shape = routeProgress?.route.shape,
+            let closestCoordinateOnRoute = shape.closestCoordinate(to: newCoordinate),
+            let nextCoordinateOnRoute = shape.coordinates.after(element: shape.coordinates[closestCoordinateOnRoute.index]),
             let time = expectedSegmentTravelTimes.optional[closestCoordinateOnRoute.index] {
-            let distance = coordinates[closestCoordinateOnRoute.index].distance(to: nextCoordinateOnRoute)
+            let distance = shape.coordinates[closestCoordinateOnRoute.index].distance(to: nextCoordinateOnRoute)
             currentSpeed =  max(distance / time, 2)
         } else {
             currentSpeed = calculateCurrentSpeed(distance: distance, coordinatesNearby: coordinatesNearby, closestLocation: closestLocation)
@@ -191,7 +186,6 @@ open class SimulatedLocationManager: NavigationLocationManager {
     }
     
     private func calculateCurrentSpeed(distance: CLLocationDistance, coordinatesNearby: [CLLocationCoordinate2D]? = nil, closestLocation: SimulatedLocation) -> CLLocationSpeed {
-
         // More than 10 nearby coordinates indicates that we are in a roundabout or similar complex shape.
         if let coordinatesNearby = coordinatesNearby, coordinatesNearby.count >= 10 {
             return minimumSpeed
@@ -235,7 +229,7 @@ extension Array where Element : Hashable {
 
 extension Array where Element : Equatable {
     fileprivate func after(element: Element) -> Element? {
-        if let index = self.index(of: element), index + 1 <= self.count {
+        if let index = self.firstIndex(of: element), index + 1 <= self.count {
             return index + 1 == self.count ? self[0] : self[index + 1]
         }
         return nil
@@ -243,7 +237,6 @@ extension Array where Element : Equatable {
 }
 
 extension Array where Element == CLLocationCoordinate2D {
-    
     // Calculate turn penalty for each coordinate.
     fileprivate func simulatedLocationsWithTurnPenalties() -> [SimulatedLocation] {
         var locations = [SimulatedLocation]()

@@ -4,15 +4,13 @@ import MapboxDirections
 
 /// :nodoc:
 extension ViewController: InstructionsCardCollectionDelegate {
-    
     public func instructionsCardCollection(_ instructionsCardCollection: InstructionsCardViewController, didPreview step: RouteStep) {
-        
         guard let route = routes?.first else { return }
         
         // find the leg that contains the step, legIndex, and stepIndex
         guard let leg = route.legs.first(where: { $0.steps.contains(step) }),
-            let legIndex = route.legs.index(of: leg),
-            let stepIndex = leg.steps.index(of: step) else {
+            let legIndex = route.legs.firstIndex(of: leg),
+            let stepIndex = leg.steps.firstIndex(of: step) else {
                 return
         }
         

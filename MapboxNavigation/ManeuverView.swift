@@ -5,8 +5,23 @@ import Turf
 
 /// :nodoc:
 @IBDesignable
-@objc(MBManeuverView)
 open class ManeuverView: UIView {
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        commonInit()
+    }
+
+    @objc public required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        commonInit()
+    }
+
+    func commonInit() {
+        // Explicitly mark the view as non-opaque.
+        // This is needed to obtain correct compositing since we implement our own draw function that includes transparency.
+        isOpaque = false
+    }
 
     @objc public dynamic var primaryColor: UIColor = .defaultTurnArrowPrimary {
         didSet {
@@ -20,13 +35,13 @@ open class ManeuverView: UIView {
         }
     }
 
-    @objc public var isStart = false {
+    public var isStart = false {
         didSet {
             setNeedsDisplay()
         }
     }
 
-    @objc public var isEnd = false {
+    public var isEnd = false {
         didSet {
             setNeedsDisplay()
         }
@@ -42,7 +57,7 @@ open class ManeuverView: UIView {
     /**
      The current instruction displayed in the maneuver view.
      */
-    @objc public var visualInstruction: VisualInstruction? {
+    public var visualInstruction: VisualInstruction? {
         didSet {
             setNeedsDisplay()
         }
@@ -51,7 +66,7 @@ open class ManeuverView: UIView {
     /**
      This indicates the side of the road currently driven on.
      */
-    @objc public var drivingSide: DrivingSide = .right {
+    public var drivingSide: DrivingSide = .right {
         didSet {
             setNeedsDisplay()
         }
@@ -81,8 +96,8 @@ open class ManeuverView: UIView {
         let maneuverType = visualInstruction.maneuverType
         let maneuverDirection = visualInstruction.maneuverDirection
         
-        let type = maneuverType != .none ? maneuverType : .turn
-        let direction = maneuverDirection != .none ? maneuverDirection : .straightAhead
+        let type = maneuverType ?? .turn
+        let direction = maneuverDirection ?? .straightAhead
 
         switch type {
         case .merge:
@@ -95,7 +110,7 @@ open class ManeuverView: UIView {
             ManeuversStyleKit.drawFork(frame: bounds, resizing: resizing, primaryColor: primaryColor, secondaryColor: secondaryColor)
             flip = [.left, .slightLeft, .sharpLeft].contains(direction)
         case .takeRoundabout, .turnAtRoundabout, .takeRotary:
-            ManeuversStyleKit.drawRoundabout(frame: bounds, resizing: resizing, primaryColor: primaryColor, secondaryColor: secondaryColor, roundabout_angle: CGFloat(visualInstruction.finalHeading))
+            ManeuversStyleKit.drawRoundabout(frame: bounds, resizing: resizing, primaryColor: primaryColor, secondaryColor: secondaryColor, roundabout_angle: CGFloat(visualInstruction.finalHeading ?? 180))
             flip = drivingSide == .left
             
         case .arrive:

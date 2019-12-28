@@ -3,14 +3,11 @@ import MapboxDirections
 import MapboxCoreNavigation
 
 /// :nodoc:
-@objc(MBNextInstructionLabel)
-open class NextInstructionLabel: InstructionLabel { }
+open class NextInstructionLabel: InstructionLabel {}
 
 /// :nodoc:
 @IBDesignable
-@objc(MBNextBannerView)
 open class NextBannerView: UIView, NavigationComponent {
-    
     weak var maneuverView: ManeuverView!
     weak var instructionLabel: NextInstructionLabel!
     weak var bottomSeparatorView: SeparatorView!
@@ -66,8 +63,8 @@ open class NextBannerView: UIView, NavigationComponent {
     override open func prepareForInterfaceBuilder() {
         super.prepareForInterfaceBuilder()
         maneuverView.isEnd = true
-        let component = VisualInstructionComponent(type: .text, text: "Next step", imageURL: nil, abbreviation: nil, abbreviationPriority: NSNotFound)
-        let instruction = VisualInstruction(text: nil, maneuverType: .none, maneuverDirection: .none, components: [component])
+        let component = VisualInstruction.Component.text(text: .init(text: "Next step", abbreviation: nil, abbreviationPriority: nil))
+        let instruction = VisualInstruction(text: nil, maneuverType: .turn, maneuverDirection: .right, components: [component])
         instructionLabel.instruction = instruction
     }
     
@@ -92,16 +89,15 @@ open class NextBannerView: UIView, NavigationComponent {
         bottomSeparatorView.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale).isActive = true
     }
     
-    @objc public func navigationService(_ service: NavigationService, didPassVisualInstructionPoint instruction: VisualInstructionBanner, routeProgress: RouteProgress) {
+    public func navigationService(_ service: NavigationService, didPassVisualInstructionPoint instruction: VisualInstructionBanner, routeProgress: RouteProgress) {
         update(for: instruction)
     }
     
     /**
      Updates the instructions banner info with a given `VisualInstructionBanner`.
      */
-    @objc(updateForVisualInstructionBanner:)
     public func update(for visualInstruction: VisualInstructionBanner?) {
-        guard let tertiaryInstruction = visualInstruction?.tertiaryInstruction, !tertiaryInstruction.containsLaneIndications else {
+        guard let tertiaryInstruction = visualInstruction?.tertiaryInstruction, tertiaryInstruction.laneComponents.isEmpty else {
             hide()
             return
         }
@@ -127,5 +123,4 @@ open class NextBannerView: UIView, NavigationComponent {
             self.isHidden = true
         }, completion: nil)
     }
-    
 }

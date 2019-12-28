@@ -1,7 +1,7 @@
 import UIKit
 
 enum ExitSide: String{
-    case left, right, other
+    case left, right
     
     var exitImage: UIImage {
         return self == .left ? ExitView.leftExitImage : ExitView.rightExitImage
@@ -61,13 +61,11 @@ public class ExitView: StylableView {
         }
     }
     
-    
     func spacing(for side: ExitSide, direction: UIUserInterfaceLayoutDirection = UIApplication.shared.userInterfaceLayoutDirection) -> CGFloat {
         let space: (less: CGFloat, more: CGFloat) = (4.0, 6.0)
         let lessSide: ExitSide = (direction == .rightToLeft) ? .left : .right
         return side == lessSide ? space.less : space.more
     }
-    
     
     convenience init(pointSize: CGFloat, side: ExitSide = .right, text: String) {
         self.init(frame: .zero)
@@ -148,7 +146,19 @@ public class ExitView: StylableView {
      */
     static func criticalHash(side: ExitSide, dataSource: DataSource) -> String {
         let proxy = ExitView.appearance()
-        let criticalProperties: [AnyHashable?] = [side, dataSource.font.pointSize, proxy.backgroundColor, proxy.foregroundColor, proxy.borderWidth, proxy.cornerRadius]
+        var backgroundColor = proxy.backgroundColor
+        var foregroundColor = proxy.foregroundColor
+        let resolvedColorSelector = Selector(("resolvedColorWithTraitCollection:" as NSString) as String)
+        if #available(iOS 13.0, *),
+            let bgColor = backgroundColor, bgColor.responds(to: resolvedColorSelector),
+            let fgColor = foregroundColor, fgColor.responds(to: resolvedColorSelector),
+            let currentTraitCollection = UIApplication.shared.keyWindow?.traitCollection {
+            if let backgroundColorInstance = bgColor.perform(resolvedColorSelector, with: currentTraitCollection), let foregroundColorInstance = fgColor.perform(resolvedColorSelector, with: currentTraitCollection) {
+                backgroundColor = backgroundColorInstance.takeRetainedValue() as? UIColor
+                foregroundColor = foregroundColorInstance.takeRetainedValue() as? UIColor
+            }
+        }
+        let criticalProperties: [AnyHashable?] = [side, dataSource.font.pointSize, backgroundColor, foregroundColor, proxy.borderWidth, proxy.cornerRadius]
         return String(describing: criticalProperties.reduce(0, { $0 ^ ($1?.hashValue ?? 0)}))
     }
 }

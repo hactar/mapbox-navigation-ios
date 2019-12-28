@@ -4,7 +4,6 @@ import MapboxGeocoder
 import CarPlay
 
 struct RecentItem: Codable, Equatable {
-    
     static func ==(lhs: RecentItem, rhs: RecentItem) -> Bool {
         return lhs.timestamp == rhs.timestamp && lhs.geocodedPlacemark == rhs.geocodedPlacemark
     }
@@ -44,11 +43,10 @@ struct RecentItem: Codable, Equatable {
 }
 
 extension Array where Element == RecentItem {
-    
     func save() {
         let encoder = JSONEncoder()
         let data = try? encoder.encode(self)
-        try? data?.write(to: RecentItem.filePathUrl)
+        (try? data?.write(to: RecentItem.filePathUrl)) as ()??
     }
     
     mutating func add(_ recentItem: RecentItem) {
@@ -66,7 +64,7 @@ extension Array where Element == RecentItem {
     }
     
     mutating func remove(_ recentItem: RecentItem) {
-        if let index = index(of: recentItem) {
+        if let index = firstIndex(of: recentItem) {
             remove(at: index)
         }
     }
