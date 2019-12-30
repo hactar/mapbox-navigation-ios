@@ -26,6 +26,8 @@ open class RouteController: NSObject {
     
     let navigator = MBNavigator()
     
+    public var recordedLocations: [CLLocation] = []
+    
     public var route: Route {
         get {
             return routeProgress.route
@@ -191,6 +193,8 @@ open class RouteController: NSObject {
         rawLocation = locations.last
         
         locations.forEach { navigator.updateLocation(for: MBFixLocation($0)) }
+        
+        recordedLocations.append(contentsOf: locations)
         
         let status = navigator.getStatusForTimestamp(location.timestamp)
         

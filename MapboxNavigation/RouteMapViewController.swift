@@ -529,22 +529,21 @@ extension RouteMapViewController: NavigationViewDelegate {
     
     // MARK: VisualInstructionDelegate
     
-    func label(_ label: InstructionLabel, willPresent instruction: VisualInstruction, as presented: NSAttributedString) -> NSAttributedString? {
+    public func label(_ label: InstructionLabel, willPresent instruction: VisualInstruction, as presented: NSAttributedString) -> NSAttributedString? {
         return delegate?.label?(label, willPresent: instruction, as: presented)
     }
 
     // MARK: NavigationMapViewCourseTrackingDelegate
-    func navigationMapViewDidStartTrackingCourse(_ mapView: NavigationMapView) {
+    public func navigationMapViewDidStartTrackingCourse(_ mapView: NavigationMapView) {
         navigationView.resumeButton.isHidden = true
         mapView.logoView.isHidden = false
     }
 
-    func navigationMapViewDidStopTrackingCourse(_ mapView: NavigationMapView) {
+    public func navigationMapViewDidStopTrackingCourse(_ mapView: NavigationMapView) {
         navigationView.resumeButton.isHidden = false
         navigationView.wayNameView.isHidden = true
         mapView.logoView.isHidden = true
     }
-
 
     //MARK: NavigationMapViewDelegate
     func navigationMapView(_ mapView: NavigationMapView, routeStyleLayerWithIdentifier identifier: String, source: MGLSource) -> MGLStyleLayer? {

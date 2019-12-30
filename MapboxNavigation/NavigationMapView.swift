@@ -879,6 +879,14 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
         return MGLShapeCollectionFeature(shapes: linesPerLeg)
     }
     
+    // Bikemap 123 to abc waypoints.
+    func characterForIndex(index: Int) -> String {
+        let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        let targetIndex = index % alphabet.count - 1 // We never use charcter for the start point
+        let index = alphabet.index(alphabet.startIndex, offsetBy: targetIndex)
+        return String(alphabet[index])
+    }
+    
     func shape(for waypoints: [Waypoint], legIndex: Int) -> MGLShape? {
         var features = [MGLPointFeature]()
         
@@ -887,7 +895,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
             feature.coordinate = waypoint.coordinate
             feature.attributes = [
                 "waypointCompleted": waypointIndex < legIndex,
-                "name": waypointIndex + 1
+                "name": self.characterForIndex(index: waypointIndex + 1)
             ]
             features.append(feature)
         }

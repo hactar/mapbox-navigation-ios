@@ -82,6 +82,8 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
 
     var userSnapToStepDistanceFromManeuver: CLLocationDistance?
     
+    public var recordedLocations: [CLLocation] = []
+    
     required public init(along route: Route, directions: Directions = Directions.shared, dataSource source: RouterDataSource) {
         self.directions = directions
         self._routeProgress = RouteProgress(route: route)
@@ -230,6 +232,8 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
         let filteredLocations = locations.filter {
             return $0.isQualified
         }
+        
+        recordedLocations.append(contentsOf: filteredLocations)
 
         if !filteredLocations.isEmpty, hasFoundOneQualifiedLocation == false {
             hasFoundOneQualifiedLocation = true
