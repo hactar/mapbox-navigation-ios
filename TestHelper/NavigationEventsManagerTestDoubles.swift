@@ -2,10 +2,8 @@ import Foundation
 import MapboxMobileEvents
 @testable import MapboxCoreNavigation
 import MapboxDirections
-import TestHelper
 
 public class NavigationEventsManagerSpy: NavigationEventsManager {
-
     var mobileEventsManagerSpy: MMEEventsManagerSpy!
     
     var _enqueuedEvents: [FakeTelemetryEvent] {
@@ -23,7 +21,7 @@ public class NavigationEventsManagerSpy: NavigationEventsManager {
         super.init(dataSource: nil, accessToken: "fake token", mobileEventsManager: mobileEventsManagerSpy)
     }
 
-    @objc required convenience public init(dataSource source: EventsManagerDataSource?, accessToken possibleToken: String?, mobileEventsManager: MMEEventsManager) {
+    required convenience public init(dataSource source: EventsManagerDataSource?, accessToken possibleToken: String?, mobileEventsManager: MMEEventsManager) {
         self.init()
     }
 
@@ -75,7 +73,6 @@ public class NavigationEventsManagerSpy: NavigationEventsManager {
 typealias FakeTelemetryEvent = (name: String, attributes: [String: Any])
 
 class MMEEventsManagerSpy: MMEEventsManager {
-
     var enqueuedEvents = [FakeTelemetryEvent]()
     var flushedEvents = [FakeTelemetryEvent]()
 

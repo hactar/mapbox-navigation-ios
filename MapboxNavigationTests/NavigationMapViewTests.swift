@@ -4,18 +4,16 @@ import TestHelper
 @testable import MapboxNavigation
 @testable import MapboxCoreNavigation
 
-
 class NavigationMapViewTests: XCTestCase, MGLMapViewDelegate {
-    
-    let response = Fixture.JSONFromFileNamed(name: "route-with-instructions")
+    let response = Fixture.routeResponse(from: "route-with-instructions", options: NavigationRouteOptions(coordinates: [
+        CLLocationCoordinate2D(latitude: 40.311012, longitude: -112.47926),
+        CLLocationCoordinate2D(latitude: 29.99908, longitude: -102.828197),
+    ]))
     var styleLoadingExpectation: XCTestExpectation?
     var mapView: NavigationMapView?
     
     lazy var route: Route = {
-        let jsonRoute = (response["routes"] as! [AnyObject]).first as! [String: Any]
-        let waypoint1 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.795042, longitude: -122.413165))
-        let waypoint2 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.7727, longitude: -122.433378))
-        let route     = Route(json: jsonRoute, waypoints: [waypoint1, waypoint2], options: NavigationRouteOptions(waypoints: [waypoint1, waypoint2]))
+        let route = response.routes!.first!
         route.accessToken = "foo"
         return route
     }()
@@ -67,14 +65,13 @@ class NavigationMapViewTests: XCTestCase, MGLMapViewDelegate {
     }
     
     func testNavigationMapViewCombineWithDissimilarCongestions() {
-        
         let congestionSegmentsSevere = mapView!.combine(coordinates, with: [
             .low,
             .low,
             .severe,
             .low,
             .low
-            ])
+        ])
         
         // The severe breaks the trend of .low.
         // Any time the current congestion level is different than the previous segment, we have to create a new congestion segment.
@@ -95,7 +92,7 @@ class NavigationMapViewTests: XCTestCase, MGLMapViewDelegate {
         mapView!.addAnnotation(PersistentAnnotation())
         XCTAssertEqual(mapView!.annotations!.count, 2)
         
-        mapView!.showWaypoints(route)
+        mapView!.showWaypoints(on: route)
         XCTAssertEqual(mapView!.annotations!.count, 3)
         
         mapView!.removeWaypoints()

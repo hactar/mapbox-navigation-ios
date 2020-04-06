@@ -3,10 +3,9 @@ import Foundation
 import AVFoundation
 import MapboxDirections
 import MapboxCoreNavigation
-
+import MapboxSpeech
 
 extension NSAttributedString {
-    @available(iOS 10.0, *)
     public func pronounced(_ pronunciation: String) -> NSAttributedString {
         let phoneticWords = pronunciation.components(separatedBy: " ")
         let phoneticString = NSMutableAttributedString()
@@ -25,7 +24,6 @@ extension NSAttributedString {
 }
 
 extension SpokenInstruction {
-    @available(iOS 10.0, *)
     func attributedText(for legProgress: RouteLegProgress) -> NSAttributedString {
         let attributedText = NSMutableAttributedString(string: text)
         if let step = legProgress.upcomingStep,
@@ -57,9 +55,7 @@ extension SpokenInstruction {
  
  If you need to supply a third-party speech synthesizer, define a subclass of `RouteVoiceController` that overrides the `speak(_:)` method. If the third-party speech synthesizer requires a network connection, you can instead subclass `MapboxVoiceController` to take advantage of its prefetching functionality.
  */
-@objc(MBRouteVoiceController)
 open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
-    
     lazy var speechSynth = AVSpeechSynthesizer()
     
     let audioQueue = DispatchQueue(label: Bundle.mapboxNavigation.bundleIdentifier! + ".audio")
@@ -67,29 +63,25 @@ open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
     /**
      If true, a noise indicating the user is going to be rerouted will play prior to rerouting.
      */
-    @objc public var playRerouteSound = true
+    public var playRerouteSound = true
     
     /**
      Sound to play prior to reroute. Inherits volume level from `volume`.
      */
-    @objc public var rerouteSoundPlayer: AVAudioPlayer = try! AVAudioPlayer(data: NSDataAsset(name: "reroute-sound", bundle: .mapboxNavigation)!.data, fileTypeHint: AVFileType.mp3.rawValue)
+    public var rerouteSoundPlayer: AVAudioPlayer = try! AVAudioPlayer(data: NSDataAsset(name: "reroute-sound", bundle: .mapboxNavigation)!.data, fileTypeHint: AVFileType.mp3.rawValue)
     
     /**
      Delegate used for getting metadata information about a particular spoken instruction.
      */
-    @objc public weak var voiceControllerDelegate: VoiceControllerDelegate?
+    public weak var voiceControllerDelegate: VoiceControllerDelegate?
     
     var lastSpokenInstruction: SpokenInstruction?
     var routeProgress: RouteProgress?
     
-    var volumeToken: NSKeyValueObservation?
-    var muteToken: NSKeyValueObservation?
-    
     /**
      Default initializer for `RouteVoiceController`.
      */
-    @objc
-    public init(navigationService: NavigationService) {
+        public init(navigationService: NavigationService) {
         super.init()
 
         verifyBackgroundAudio()
@@ -123,23 +115,25 @@ open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(didPassSpokenInstructionPoint(notification:)), name: .routeControllerDidPassSpokenInstructionPoint, object: service.router)
         NotificationCenter.default.addObserver(self, selector: #selector(pauseSpeechAndPlayReroutingDing(notification:)), name: .routeControllerWillReroute, object: service.router)
         NotificationCenter.default.addObserver(self, selector: #selector(didReroute(notification:)), name: .routeControllerDidReroute, object: service.router)
-        
-        muteToken = NavigationSettings.shared.observe(\.voiceMuted) { [weak self] (settings, change) in
-            if settings.voiceMuted {
-                self?.speechSynth.stopSpeaking(at: .immediate)
-            }
-        }
+        NotificationCenter.default.addObserver(self, selector: #selector(didUpdateSettings(notification:)), name: .navigationSettingsDidChange, object: NavigationSettings.shared)
     }
     
     func suspendNotifications() {
         NotificationCenter.default.removeObserver(self, name: .routeControllerDidPassSpokenInstructionPoint, object: nil)
         NotificationCenter.default.removeObserver(self, name: .routeControllerWillReroute, object: nil)
         NotificationCenter.default.removeObserver(self, name: .routeControllerDidReroute, object: nil)
+        NotificationCenter.default.removeObserver(self, name: .navigationSettingsDidChange, object: nil)
+    }
+    
+    @objc func didUpdateSettings(notification: NSNotification) {
+        if let isMuted = notification.userInfo?[NavigationSettings.StoredProperty.voiceMuted.key] as? Bool, isMuted {
+            speechSynth.stopSpeaking(at: .immediate)
+        }
     }
     
     @objc func didReroute(notification: NSNotification) {
         // Play reroute sound when a faster route is found
-        if notification.userInfo?[RouteControllerNotificationUserInfoKey.isProactiveKey] as! Bool {
+        if notification.userInfo?[RouteController.NotificationUserInfoKey.isProactiveKey] as! Bool {
             pauseSpeechAndPlayReroutingDing(notification: notification)
         }
     }
@@ -151,57 +145,74 @@ open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
         
         speechSynth.stopSpeaking(at: .word)
         
-        do {
-            try mixAudio()
-        } catch {
-            voiceControllerDelegate?.voiceController?(self, spokenInstructionsDidFailWith: error)
+        safeMixAudio(instruction: nil, engine: speechSynth) {
+            voiceControllerDelegate?.voiceController(self, spokenInstructionsDidFailWith: $0)
         }
+        
         rerouteSoundPlayer.play()
     }
     
-    @objc public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        do {
-            try unDuckAudio()
-        } catch {
-            voiceControllerDelegate?.voiceController?(self, spokenInstructionsDidFailWith: error)
+    public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
+        safeUnduckAudio(instruction: nil, engine: synthesizer) {
+            voiceControllerDelegate?.voiceController(self, spokenInstructionsDidFailWith: $0)
         }
     }
     
-    func duckAudio() throws {
+    typealias AudioControlFailureHandler = (SpeechError) -> Void
+    func safeDuckAudio(instruction: SpokenInstruction?, engine: Any?, failure: AudioControlFailureHandler) {
+        do {
+            try tryDuckAudio()
+        } catch {
+            let wrapped = SpeechError.unableToControlAudio(instruction: instruction, action: .duck, synthesizer: engine, underlying: error)
+            failure(wrapped)
+            return
+        }
+    }
+    
+    func safeUnduckAudio(instruction: SpokenInstruction?, engine: Any?, failure: AudioControlFailureHandler) {
+        do {
+            try tryUnduckAudio()
+        } catch {
+            let wrapped = SpeechError.unableToControlAudio(instruction: instruction, action: .duck, synthesizer: engine, underlying: error)
+            failure(wrapped)
+            return
+        }
+    }
+    
+    func safeMixAudio(instruction: SpokenInstruction?, engine: Any?, failure: AudioControlFailureHandler) {
+        do {
+            try tryMixAudio()
+        } catch {
+            let wrapped = SpeechError.unableToControlAudio(instruction: instruction, action: .mix, synthesizer: engine, underlying: error)
+            failure(wrapped)
+            return
+        }
+    }
+    
+    func tryDuckAudio() throws {
         let audioSession = AVAudioSession.sharedInstance()
         if #available(iOS 12.0, *) {
             try audioSession.setCategory(.playback, mode: .voicePrompt, options: [.duckOthers, .mixWithOthers])
-        } else if #available(iOS 10.0, *) {
+        } else {
             try audioSession.setCategory(.ambient, mode: .spokenAudio, options: [.duckOthers, .mixWithOthers])
-        } else {
-            try audioSession.setMode(.spokenAudio)
-            audioSession.perform(Selector("setCategory:withOptions:error:" as String),
-                                 with: AVAudioSession.Category.ambient.rawValue,
-                                 with: [AVAudioSession.CategoryOptions.duckOthers.rawValue,
-                                        AVAudioSession.CategoryOptions.mixWithOthers.rawValue])
         }
         try audioSession.setActive(true)
     }
     
-    func mixAudio() throws {
+    func tryMixAudio() throws {
         let audioSession = AVAudioSession.sharedInstance()
-        if #available(iOS 10.0, *) {
-            try audioSession.setCategory(.ambient, mode: audioSession.mode)
-        } else {
-            audioSession.perform(Selector("setCategory:error:" as String),
-                                 with: AVAudioSession.Category.ambient.rawValue)
-        }
+        try audioSession.setCategory(.ambient, mode: audioSession.mode)
         try audioSession.setActive(true)
     }
     
-    func unDuckAudio() throws {
+    func tryUnduckAudio() throws {
         try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
     }
     
     @objc open func didPassSpokenInstructionPoint(notification: NSNotification) {
         guard !NavigationSettings.shared.voiceMuted else { return }
         
-        routeProgress = notification.userInfo![RouteControllerNotificationUserInfoKey.routeProgressKey] as? RouteProgress
+        routeProgress = notification.userInfo![RouteController.NotificationUserInfoKey.routeProgressKey] as? RouteProgress
         assert(routeProgress != nil, "routeProgress should not be nil.")
 
         guard let instruction = routeProgress!.currentLegProgress.currentStepProgress.currentSpokenInstruction else { return }
@@ -218,13 +229,11 @@ open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
         assert(routeProgress != nil, "routeProgress should not be nil.")
         
         if speechSynth.isSpeaking, let lastSpokenInstruction = lastSpokenInstruction {
-            voiceControllerDelegate?.voiceController?(self, didInterrupt: lastSpokenInstruction, with: instruction)
+            voiceControllerDelegate?.voiceController(self, didInterrupt: lastSpokenInstruction, with: instruction)
         }
         
-        do {
-            try duckAudio()
-        } catch {
-            voiceControllerDelegate?.voiceController?(self, spokenInstructionsDidFailWith: error)
+        safeDuckAudio(instruction: instruction, engine: speechSynth) {
+            voiceControllerDelegate?.voiceController(self, spokenInstructionsDidFailWith: $0)
         }
         
         var utterance: AVSpeechUtterance?
@@ -234,12 +243,10 @@ open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
             utterance!.voice = AVSpeechSynthesisVoice(identifier: AVSpeechSynthesisVoiceIdentifierAlex)
         }
         
-        let modifiedInstruction = voiceControllerDelegate?.voiceController?(self, willSpeak: instruction, routeProgress: routeProgress!) ?? instruction
+        let modifiedInstruction = voiceControllerDelegate?.voiceController(self, willSpeak: instruction, routeProgress: routeProgress!) ?? instruction
         
-        if #available(iOS 10.0, *), utterance?.voice == nil {
+        if utterance?.voice == nil {
             utterance = AVSpeechUtterance(attributedString: modifiedInstruction.attributedText(for: routeProgress!.currentLegProgress))
-        } else {
-            utterance = AVSpeechUtterance(string: modifiedInstruction.text)
         }
         
         // Only localized languages will have a proper fallback voice
@@ -256,17 +263,23 @@ open class RouteVoiceController: NSObject, AVSpeechSynthesizerDelegate {
 /**
  The `VoiceControllerDelegate` protocol defines methods that allow an object to respond to significant events related to spoken instructions.
  */
-@objc(MBVoiceControllerDelegate)
-public protocol VoiceControllerDelegate {
-    
+public protocol VoiceControllerDelegate: class, UnimplementedLogging {
+    /**
+     Called when the voice controller falls back to a backup speech syntehsizer, but is still able to speak the instruction.
+     
+     - parameter voiceController: The voice controller that experienced the failure.
+     - parameter synthesizer: the Speech engine that was used as the fallback.
+     - parameter error: An error explaining the failure and its cause.
+     */
+    func voiceController(_ voiceController: RouteVoiceController, didFallBackTo synthesizer: AVSpeechSynthesizer, error: SpeechError)
+   
     /**
      Called when the voice controller failed to speak an instruction.
      
      - parameter voiceController: The voice controller that experienced the failure.
-     - parameter error: An error explaining the failure and its cause. The `MBSpokenInstructionErrorCodeKey` key of the error’s user info dictionary is a `SpokenInstructionErrorCode` indicating the cause of the failure.
+     - parameter error: An error explaining the failure and its cause.
      */
-    @objc(voiceController:spokenInstrucionsDidFailWithError:)
-    optional func voiceController(_ voiceController: RouteVoiceController, spokenInstructionsDidFailWith error: Error)
+    func voiceController(_ voiceController: RouteVoiceController, spokenInstructionsDidFailWith error: SpeechError)
     
     /**
      Called when one spoken instruction interrupts another instruction currently being spoken.
@@ -275,15 +288,45 @@ public protocol VoiceControllerDelegate {
      - parameter interruptedInstruction: The spoken instruction currently in progress that has been interrupted.
      - parameter interruptingInstruction: The spoken instruction that is interrupting the current instruction.
      */
-    @objc(voiceController:didInterruptSpokenInstruction:withInstruction:)
-    optional func voiceController(_ voiceController: RouteVoiceController, didInterrupt interruptedInstruction: SpokenInstruction, with interruptingInstruction: SpokenInstruction)
+    func voiceController(_ voiceController: RouteVoiceController, didInterrupt interruptedInstruction: SpokenInstruction, with interruptingInstruction: SpokenInstruction)
     
-    /** Called when a spoken is about to speak. Useful if it is necessary to give a custom instruction instead. Noting, changing the `distanceAlongStep` property on `SpokenInstruction` will have no impact on when the instruction will be said.
+    /**
+     Called when a spoken is about to speak. Useful if it is necessary to give a custom instruction instead. Noting, changing the `distanceAlongStep` property on `SpokenInstruction` will have no impact on when the instruction will be said.
      
      - parameter voiceController: The voice controller that will speak an instruction.
      - parameter instruction: The spoken instruction that will be said.
      - parameter routeProgress: The `RouteProgress` just before when the instruction is scheduled to be spoken.
-     **/
-    @objc(voiceController:willSpeakSpokenInstruction:routeProgress:)
-    optional func voiceController(_ voiceController: RouteVoiceController, willSpeak instruction: SpokenInstruction, routeProgress: RouteProgress) -> SpokenInstruction?
+     */
+    func voiceController(_ voiceController: RouteVoiceController, willSpeak instruction: SpokenInstruction, routeProgress: RouteProgress) -> SpokenInstruction?
+}
+
+public extension VoiceControllerDelegate {
+    /**
+     `UnimplementedLogging` prints a warning to standard output the first time this method is called.
+     */
+    func voiceController(_ voiceController: RouteVoiceController, didFallBackTo synthesizer: AVSpeechSynthesizer, error: SpeechError) {
+        logUnimplemented(protocolType: VoiceControllerDelegate.self, level: .debug)
+    }
+    
+    /**
+     `UnimplementedLogging` prints a warning to standard output the first time this method is called.
+     */
+    func voiceController(_ voiceController: RouteVoiceController, spokenInstructionsDidFailWith error: Error) {
+        logUnimplemented(protocolType: VoiceControllerDelegate.self, level: .debug)
+    }
+    
+    /**
+     `UnimplementedLogging` prints a warning to standard output the first time this method is called.
+     */
+    func voiceController(_ voiceController: RouteVoiceController, didInterrupt interruptedInstruction: SpokenInstruction, with interruptingInstruction: SpokenInstruction) {
+        logUnimplemented(protocolType: VoiceControllerDelegate.self, level: .debug)
+    }
+    
+    /**
+     `UnimplementedLogging` prints a warning to standard output the first time this method is called.
+     */
+    func voiceController(_ voiceController: RouteVoiceController, willSpeak instruction: SpokenInstruction, routeProgress: RouteProgress) -> SpokenInstruction? {
+        logUnimplemented(protocolType: VoiceControllerDelegate.self, level: .debug)
+        return nil
+    }
 }

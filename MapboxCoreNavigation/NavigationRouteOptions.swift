@@ -6,17 +6,14 @@ import MapboxDirections
 
  `NavigationRouteOptions` is a subclass of `RouteOptions` that has been optimized for navigation. Pass an instance of this class into the `Directions.calculate(_:completionHandler:)` method.
  - note: `NavigationRouteOptions` is designed to be used with the `Directions` and `NavigationDirections` classes for specifying routing criteria. To customize the user experience in a `NavigationViewController`, use the `NavigationOptions` class.
-
  */
-@objc(MBNavigationRouteOptions)
 open class NavigationRouteOptions: RouteOptions {
-
     /**
      Initializes a navigation route options object for routes between the given waypoints and an optional profile identifier optimized for navigation.
 
      - seealso: `RouteOptions`
      */
-    @objc public required init(waypoints: [Waypoint], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    public required init(waypoints: [Waypoint], profileIdentifier: DirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         super.init(waypoints: waypoints.map {
             $0.coordinateAccuracy = -1
             return $0
@@ -25,7 +22,11 @@ open class NavigationRouteOptions: RouteOptions {
         shapeFormat = .polyline6
         includesSteps = true
         routeShapeResolution = .full
-        attributeOptions = [.congestionLevel, .expectedTravelTime]
+        if profileIdentifier == .walking {
+            attributeOptions = [.congestionLevel, .expectedTravelTime]
+        } else {
+            attributeOptions = [.congestionLevel, .expectedTravelTime, .maximumSpeedLimit]
+        }
         includesSpokenInstructions = true
         locale = Locale.nationalizedCurrent
         distanceMeasurementSystem = Locale.current.usesMetricSystem ? .metric : .imperial
@@ -38,7 +39,7 @@ open class NavigationRouteOptions: RouteOptions {
 
      - seealso: `RouteOptions`
      */
-    @objc public convenience init(locations: [CLLocation], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    public convenience init(locations: [CLLocation], profileIdentifier: DirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         self.init(waypoints: locations.map { Waypoint(location: $0) }, profileIdentifier: profileIdentifier)
     }
 
@@ -47,12 +48,12 @@ open class NavigationRouteOptions: RouteOptions {
 
      - seealso: `RouteOptions`
      */
-    @objc public convenience init(coordinates: [CLLocationCoordinate2D], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    public convenience init(coordinates: [CLLocationCoordinate2D], profileIdentifier: DirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         self.init(waypoints: coordinates.map { Waypoint(coordinate: $0) }, profileIdentifier: profileIdentifier)
     }
-
-    @objc public required init?(coder decoder: NSCoder) {
-        super.init(coder: decoder)
+    
+    required public init(from decoder: Decoder) throws {
+        try super.init(from: decoder)
     }
 }
 
@@ -63,15 +64,13 @@ open class NavigationRouteOptions: RouteOptions {
  
  Note: it is very important you specify the `waypoints` for the route. Usually the only two values for this `IndexSet` will be 0 and the length of the coordinates. Otherwise, all coordinates passed through will be considered waypoints.
  */
-@objc(MBNavigationMatchOptions)
 open class NavigationMatchOptions: MatchOptions {
-    
     /**
      Initializes a navigation route options object for routes between the given waypoints and an optional profile identifier optimized for navigation.
      
      - seealso: `MatchOptions`
      */
-    @objc public required init(waypoints: [Waypoint], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    public required init(waypoints: [Waypoint], profileIdentifier: DirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         super.init(waypoints: waypoints.map {
             $0.coordinateAccuracy = -1
             return $0
@@ -80,6 +79,9 @@ open class NavigationMatchOptions: MatchOptions {
         routeShapeResolution = .full
         shapeFormat = .polyline6
         attributeOptions = [.congestionLevel, .expectedTravelTime]
+        if profileIdentifier == .automobile || profileIdentifier == .automobileAvoidingTraffic {
+            attributeOptions.insert(.maximumSpeedLimit)
+        }
         includesSpokenInstructions = true
         locale = Locale.nationalizedCurrent
         distanceMeasurementSystem = Locale.current.usesMetricSystem ? .metric : .imperial
@@ -91,7 +93,7 @@ open class NavigationMatchOptions: MatchOptions {
      
      - seealso: `MatchOptions`
      */
-    @objc public convenience init(locations: [CLLocation], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    public convenience init(locations: [CLLocation], profileIdentifier: DirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         self.init(waypoints: locations.map { Waypoint(location: $0) }, profileIdentifier: profileIdentifier)
     }
     
@@ -100,11 +102,11 @@ open class NavigationMatchOptions: MatchOptions {
      
      - seealso: `MatchOptions`
      */
-    @objc public convenience init(coordinates: [CLLocationCoordinate2D], profileIdentifier: MBDirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
+    public convenience init(coordinates: [CLLocationCoordinate2D], profileIdentifier: DirectionsProfileIdentifier? = .automobileAvoidingTraffic) {
         self.init(waypoints: coordinates.map { Waypoint(coordinate: $0) }, profileIdentifier: profileIdentifier)
     }
     
-    @objc public required init?(coder decoder: NSCoder) {
-        super.init(coder: decoder)
+    required public init(from decoder: Decoder) throws {
+        try super.init(from: decoder)
     }
 }

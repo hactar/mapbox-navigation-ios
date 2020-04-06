@@ -4,7 +4,7 @@
 
 The Mapbox Navigation SDK gives you all the tools you need to add turn-by-turn navigation to your application. It takes just a few minutes to drop a full-fledged turn-by-turn navigation view controller into your application. Or use the Core Navigation framework directly to build something truly custom.
 
-The Mapbox Navigation SDK and Core Navigation are compatible with applications written in Swift 4 or Objective-C in Xcode 9.0. The Mapbox Navigation and Mapbox Core Navigation frameworks run on iOS 9.0 and above.
+The Mapbox Navigation SDK and Core Navigation are compatible with applications written in Swift 5 in Xcode 10.2. The Mapbox Navigation and Mapbox Core Navigation frameworks run on iOS 10.0 and above.
 
 ## Installation
 
@@ -37,7 +37,7 @@ Alternatively, to install Mapbox Navigation using [Carthage](https://github.com/
 1. Mapbox APIs and vector tiles require a Mapbox account and API access token. In the project editor, select the application target, then go to the Info tab. Under the “Custom iOS Target Properties” section, set `MGLMapboxAccessToken` to your access token. You can obtain an access token from the [Mapbox account page](https://account.mapbox.com/access-tokens/).
 
 1. In order for the SDK to track the user’s location as they move along the route, set `NSLocationWhenInUseUsageDescription` to:
-   > Shows your location on the map and helps improve OpenStreetMap.
+   > Shows your location on the map and helps improve the map.
 
 1. Users expect the SDK to continue to track the user’s location and deliver audible instructions even while a different application is visible or the device is locked. Go to the Capabilities tab. Under the Background Modes section, enable “Audio, AirPlay, and Picture in Picture” and “Location updates”. (Alternatively, add the `audio` and `location` values to the `UIBackgroundModes` array in the Info tab.)
 
@@ -77,6 +77,6 @@ This SDK is divided into two frameworks: the Mapbox Navigation framework (`Mapbo
 
 ### Core Navigation
 
-`MapboxNavigationService` is responsible for receiving user location updates and determining their relation to the route line. If you build a completely custom navigation UI, this is the class your code would interact with directly. The `NavigationServiceDelegate` protocol allows your application to react to location-related events as they occur. Corresponding `Notification`s  from the `NavigationService`'s `RouteController` are also posted to the shared `NotificationCenter`. These notifications indicate the current state of the application in the form of a `RouteProgress` object.
+`MapboxNavigationService` is responsible for receiving user location updates and determining their relation to the route line. If you build a completely custom navigation UI, this is the class your code would interact with directly. The `NavigationServiceDelegate` protocol allows your application to react to location-related events as they occur. Corresponding `Notification`s from the `NavigationService`'s `RouteController` are also posted to the shared `NotificationCenter`. These notifications indicate the current state of the application in the form of a `RouteProgress` object.
 
 For further details, consult the guides and examples included with this API reference. If you have any questions, please see [our help page](https://docs.mapbox.com/help/). We welcome your [bug reports, feature requests, and contributions](https://github.com/mapbox/mapbox-navigation-ios/blob/master/CONTRIBUTING.md).

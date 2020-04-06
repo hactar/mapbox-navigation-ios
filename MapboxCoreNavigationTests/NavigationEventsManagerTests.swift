@@ -3,22 +3,27 @@ import MapboxMobileEvents
 @testable import TestHelper
 @testable import MapboxCoreNavigation
 
-
 class NavigationEventsManagerTests: XCTestCase {
-
     func testMobileEventsManagerIsInitializedImmediately() {
         let mobileEventsManagerSpy = MMEEventsManagerSpy()
         let _ = NavigationEventsManager(dataSource: nil, accessToken: "example token", mobileEventsManager: mobileEventsManagerSpy)
 
-        XCTAssertEqual(mobileEventsManagerSpy.accessToken, "example token")
+        let config = UserDefaults.mme_configuration()
+        let token = config.mme_accessToken
+        XCTAssertEqual(token, "example token")
     }
     
     func testDepartRerouteArrive() {
+        let firstRoute = Fixture.route(from: "DCA-Arboretum", options: NavigationRouteOptions(coordinates: [
+            CLLocationCoordinate2D(latitude: 38.853108, longitude: -77.043331),
+            CLLocationCoordinate2D(latitude: 38.910736, longitude: -76.966906),
+        ]))
+        let secondRoute = Fixture.route(from: "PipeFittersUnion-FourSeasonsBoston", options: NavigationRouteOptions(coordinates: [
+            CLLocationCoordinate2D(latitude: 42.361634, longitude: -71.12852),
+            CLLocationCoordinate2D(latitude: 42.352396, longitude: -71.068719),
+        ]))
         
-        let firstRoute = Fixture.route(from: "DCA-Arboretum")
-        let secondRoute = Fixture.route(from: "PipeFittersUnion-FourSeasonsBoston")
-        
-        let firstTrace = Array<CLLocation>(Fixture.generateTrace(for: firstRoute).prefix(upTo: firstRoute.coordinates!.count / 2)).shiftedToPresent().qualified()
+        let firstTrace = Array<CLLocation>(Fixture.generateTrace(for: firstRoute).prefix(upTo: firstRoute.shape!.coordinates.count / 2)).shiftedToPresent().qualified()
         let secondTrace = Fixture.generateTrace(for: secondRoute).shifted(to: firstTrace.last!.timestamp + 1).qualified()
         
         let locationManager = NavigationLocationManager()

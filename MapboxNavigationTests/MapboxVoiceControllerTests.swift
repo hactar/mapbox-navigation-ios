@@ -6,14 +6,15 @@ import AVKit
 @testable import TestHelper
 @testable import MapboxNavigation
 
-
 class MapboxVoiceControllerTests: XCTestCase {
-
     var speechAPISpy: SpeechAPISpy!
 
     var route: Route {
         get {
-            return Fixture.route(from: "route-with-instructions")
+            return Fixture.route(from: "route-with-instructions", options: NavigationRouteOptions(coordinates: [
+                CLLocationCoordinate2D(latitude: 40.311012, longitude: -112.47926),
+                CLLocationCoordinate2D(latitude: 29.99908, longitude: -102.828197),
+            ]))
         }
     }
 
@@ -36,7 +37,9 @@ class MapboxVoiceControllerTests: XCTestCase {
     func testControllerDownloadsAndCachesInstructionDataWhenNotified() {
         let service = MapboxNavigationService(route: route)
         let subject = MapboxVoiceController(navigationService: service, speechClient: speechAPISpy, audioPlayerType: AudioPlayerDummy.self)
-        let userInfo = [RouteControllerNotificationUserInfoKey.routeProgressKey : service.routeProgress]
+        let userInfo = [
+            RouteController.NotificationUserInfoKey.routeProgressKey: service.routeProgress,
+        ]
         let notification = Notification.init(name: .routeControllerDidPassSpokenInstructionPoint, object: service.router, userInfo: userInfo)
 
         NotificationCenter.default.post(notification)
@@ -73,7 +76,6 @@ class MapboxVoiceControllerTests: XCTestCase {
         
         let instruction = routeProgress.currentLegProgress.currentStepProgress.currentSpokenInstruction
         
-        
         let handler: XCTNSNotificationExpectation.Handler = { note in
             return true
         }
@@ -85,7 +87,6 @@ class MapboxVoiceControllerTests: XCTestCase {
         subject.speak(instruction!)
         let firstCall = speechAPISpy.audioDataCalls.first!
         firstCall.fulfill()
-        
         
         wait(for: [play, prepare], timeout: 4)
     }
