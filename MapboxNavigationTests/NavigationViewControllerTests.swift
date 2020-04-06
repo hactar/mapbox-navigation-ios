@@ -6,16 +6,19 @@ import Turf
 @testable import MapboxNavigation
 
 let jsonFileName = "routeWithInstructions"
-let response = Fixture.JSONFromFileNamed(name: jsonFileName)
+var routeOptions: NavigationRouteOptions {
+    let from = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.795042, longitude: -122.413165))
+    let to = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.7727, longitude: -122.433378))
+    return NavigationRouteOptions(waypoints: [from, to])
+}
+let response = Fixture.routeResponse(from: jsonFileName, options: routeOptions)
 let otherResponse = Fixture.JSONFromFileNamed(name: "route-for-lane-testing")
 
 class NavigationViewControllerTests: XCTestCase {
-    
     var customRoadName = [CLLocationCoordinate2D: String?]()
     
     var updatedStyleNumberOfTimes = 0
     lazy var dependencies: (navigationViewController: NavigationViewController, navigationService: NavigationService, startLocation: CLLocation, poi: [CLLocation], endLocation: CLLocation, voice: RouteVoiceController) = {
-
         let fakeDirections = DirectionsSpy(accessToken: "garbage", host: nil)
         let fakeService = MapboxNavigationService(route: initialRoute, directions: fakeDirections, locationSource: NavigationLocationManagerStub(), simulating: .never)
         let fakeVoice: RouteVoiceController = RouteVoiceControllerStub(navigationService: fakeService)
@@ -26,7 +29,7 @@ class NavigationViewControllerTests: XCTestCase {
         
         let navigationService = navigationViewController.navigationService!
         let router = navigationService.router!
-        let firstCoord      = router.routeProgress.nearbyCoordinates.first!
+        let firstCoord      = router.routeProgress.nearbyShape.coordinates.first!
         let firstLocation   = location(at: firstCoord)
         
         var poi = [CLLocation]()
@@ -38,18 +41,18 @@ class NavigationViewControllerTests: XCTestCase {
         poi.append(location(at: turkStreetIntersection.location))
         poi.append(location(at: fultonStreetIntersection.location))
         
-        let lastCoord    = router.routeProgress.currentLegProgress.remainingSteps.last!.coordinates!.first!
+        let lastCoord    = router.routeProgress.currentLegProgress.remainingSteps.last!.shape!.coordinates.first!
         let lastLocation = location(at: lastCoord)
         
         return (navigationViewController: navigationViewController, navigationService: navigationService, startLocation: firstLocation, poi: poi, endLocation: lastLocation, voice: fakeVoice)
     }()
     
     lazy var initialRoute: Route = {
-        return Fixture.route(from: jsonFileName)
+        return Fixture.route(from: jsonFileName, options: routeOptions)
     }()
     
     lazy var newRoute: Route = {
-        return Fixture.route(from: jsonFileName)
+        return Fixture.route(from: jsonFileName, options: routeOptions)
     }()
     
     override func setUp() {
@@ -60,7 +63,6 @@ class NavigationViewControllerTests: XCTestCase {
     // Brief: navigationViewController(_:roadNameAt:) delegate method is implemented,
     //        with a road name provided and wayNameView label is visible.
     func testNavigationViewControllerDelegateRoadNameAtLocationImplemented() {
-        
         let navigationViewController = dependencies.navigationViewController
         let service = dependencies.navigationService
         
@@ -154,7 +156,6 @@ class NavigationViewControllerTests: XCTestCase {
     // Brief: navigationViewController(_:roadNameAt:) delegate method is implemented,
     //        with a blank road name (empty string) provided and wayNameView label is hidden.
     func testNavigationViewControllerDelegateRoadNameAtLocationEmptyString() {
-        
         let navigationViewController = dependencies.navigationViewController
         let service = dependencies.navigationService
         
@@ -175,7 +176,6 @@ class NavigationViewControllerTests: XCTestCase {
     }
     
     func testNavigationViewControllerDelegateRoadNameAtLocationUmimplemented() {
-        
         let navigationViewController = dependencies.navigationViewController
         UIApplication.shared.delegate!.window!!.addSubview(navigationViewController.view)
         
@@ -183,7 +183,6 @@ class NavigationViewControllerTests: XCTestCase {
         
         // Identify a location without a custom road name.
         let fultonStreetLocation = dependencies.poi[2]
-
         
         navigationViewController.mapViewController!.labelRoadNameCompletionHandler = { (defaultRoadNameAssigned) in
             XCTAssertTrue(defaultRoadNameAssigned, "label road name was not successfully set")
@@ -206,12 +205,13 @@ class NavigationViewControllerTests: XCTestCase {
             return !navigationViewController.mapView!.annotations!.isEmpty
         })
         
-        guard let annotations = navigationViewController.mapView?.annotations else { return XCTFail("Annotations not found.")}
-
+        guard let annotations = navigationViewController.mapView?.annotations?.compactMap({ $0 as? MGLPointAnnotation }) else {
+            return XCTFail("No point annotations found.")
+        }
+        
         let firstDestination = initialRoute.routeOptions.waypoints.last!.coordinate
-        let destinations = annotations.filter(annotationFilter(matching: firstDestination))
-        XCTAssert(!destinations.isEmpty, "Destination annotation does not exist on map")
-    
+        XCTAssert(annotations.contains { $0.coordinate.distance(to: firstDestination) < 1 }, "Destination annotation does not exist on map")
+        
         //lets set the second route
         navigationViewController.route = newRoute
         
@@ -219,16 +219,17 @@ class NavigationViewControllerTests: XCTestCase {
         let secondDestination = newRoute.routeOptions.waypoints.last!.coordinate
 
         //do we have a destination on the second route?
-        let newDestinations = newAnnotations.filter(annotationFilter(matching: secondDestination))
-        XCTAssert(!newDestinations.isEmpty, "New destination annotation does not exist on map")
-        
+        XCTAssert(newAnnotations.contains { $0.coordinate.distance(to: secondDestination) < 1 }, "New destination annotation does not exist on map")
     }
     
     func testBlankBanner() {
         let window = UIApplication.shared.keyWindow!
         let viewController = window.rootViewController!
         
-        let route = Fixture.route(from: "DCA-Arboretum")
+        let route = Fixture.route(from: "DCA-Arboretum", options: NavigationRouteOptions(coordinates: [
+            CLLocationCoordinate2D(latitude: 38.853108, longitude: -77.043331),
+            CLLocationCoordinate2D(latitude: 38.910736, longitude: -76.966906),
+        ]))
         let navigationViewController = NavigationViewController(for: route)
         
         viewController.present(navigationViewController, animated: false, completion: nil)
@@ -249,21 +250,16 @@ class NavigationViewControllerTests: XCTestCase {
         let bottom = BottomBannerFake(nibName: nil, bundle: nil)
         
         let fakeOptions = NavigationOptions(topBanner: top, bottomBanner: bottom)
-        let route = Fixture.route(from: "DCA-Arboretum")
+        let route = Fixture.route(from: "DCA-Arboretum", options: NavigationRouteOptions(coordinates: [
+            CLLocationCoordinate2D(latitude: 38.853108, longitude: -77.043331),
+            CLLocationCoordinate2D(latitude: 38.910736, longitude: -76.966906),
+        ]))
         
         let subject = NavigationViewController(for: route, options: fakeOptions)
         XCTAssert(subject.topViewController == top, "Top banner not injected properly into NVC")
         XCTAssert(subject.bottomViewController == bottom, "Bottom banner not injected properly into NVC")
         XCTAssert(subject.mapViewController!.children.contains(top), "Top banner not found in child VC heirarchy")
         XCTAssert(subject.mapViewController!.children.contains(bottom), "Bottom banner not found in child VC heirarchy")
-    }
-    
-    private func annotationFilter(matching coordinate: CLLocationCoordinate2D) -> ((MGLAnnotation) -> Bool) {
-        let filter = { (annotation: MGLAnnotation) -> Bool in
-            guard let pointAnno = annotation as? MGLPointAnnotation else { return false }
-            return pointAnno.coordinate == coordinate
-        }
-        return filter
     }
 }
 
@@ -282,9 +278,9 @@ extension NavigationViewControllerTests: NavigationViewControllerDelegate, Style
 }
 
 extension CLLocationCoordinate2D: Hashable {
-    // Hash value property multiplied by a prime constant.
-    public var hashValue: Int {
-        return latitude.hashValue ^ longitude.hashValue &* 16777619
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(latitude)
+        hasher.combine(longitude)
     }
     
     static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {

@@ -1,5 +1,5 @@
 /// :nodoc:
-@objc public protocol InstructionsCardStyle: class {
+public protocol InstructionsCardStyle: class {
     var cornerRadius: CGFloat { get set }
     var backgroundColor: UIColor { get set }
     var highlightedBackgroundColor: UIColor { get set }
@@ -26,6 +26,7 @@
     var maneuverViewPrimaryColor: UIColor { get }
     var maneuverViewSecondaryColor: UIColor { get }
     var maneuverViewHighlightedColor: UIColor { get }
+    var maneuverViewSecondaryHighlightedColor: UIColor { get }
     
     // MARK: Next Banner Instruction custom formats
     var nextBannerViewPrimaryColor: UIColor { get }
@@ -33,6 +34,7 @@
     var nextBannerInstructionLabelTextColor: UIColor { get }
     var nextBannerInstructionLabelNormalFont: UIFont { get }
     var nextBannerInstructionHighlightedColor: UIColor { get }
+    var nextBannerInstructionSecondaryHighlightedColor: UIColor { get }
     
     // MARK: Lanes View custom formats
     var lanesViewDefaultColor: UIColor { get }

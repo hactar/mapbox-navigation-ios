@@ -3,11 +3,8 @@ import MapboxDirections
 import TestHelper
 @testable import MapboxCoreNavigation
 
-
 class OfflineRoutingTests: XCTestCase {
-    
     func testOfflineDirections() {
-        
         let bundle = Bundle(for: Fixture.self)
         let tilesURL = URL(fileURLWithPath: bundle.bundlePath.appending("/tiles/liechtenstein"))
 
@@ -41,11 +38,10 @@ class OfflineRoutingTests: XCTestCase {
         wait(for: [calculateRouteExpectation], timeout: 2)
 
         XCTAssertNotNil(route)
-        XCTAssertEqual(route!.coordinates!.count, 47)
+        XCTAssertEqual(route!.shape!.coordinates.count, 47)
     }
     
     func testOfflineDirectionsError() {
-        
         let bundle = Bundle(for: Fixture.self)
         let tilesURL = URL(fileURLWithPath: bundle.bundlePath).appendingPathComponent("/tiles/liechtenstein")
         
@@ -68,9 +64,11 @@ class OfflineRoutingTests: XCTestCase {
         
         directions.calculate(options, offline: true) { (waypoints, routes, error) in
             XCTAssertNotNil(error)
-            let validErrors = ["No suitable edges near location", "Unknown Routing Error"]
-            let validError = validErrors.contains(error!.localizedDescription)
-            XCTAssertTrue(validError)
+            if let error = error, case let .standard(directionsError) = error {
+                XCTAssertEqual(directionsError, .unableToRoute)
+            } else {
+                XCTFail("Error should be standard error")
+            }
             XCTAssertNil(routes)
             XCTAssertNil(waypoints)
             calculateRouteExpectation.fulfill()
@@ -80,7 +78,6 @@ class OfflineRoutingTests: XCTestCase {
     }
     
     func testUnpackTilePack() {
-        
         let bundle = Bundle(for: Fixture.self)
         let readonlyPackURL = URL(fileURLWithPath: bundle.path(forResource: "li", ofType: "tar")!)
         
@@ -99,9 +96,7 @@ class OfflineRoutingTests: XCTestCase {
         progressExpectation.expectedFulfillmentCount = 2
         
         NavigationDirections.unpackTilePack(at: packURL, outputDirectoryURL: outputDirectoryURL, progressHandler: { (totalBytes, unpackedBytes) in
-            
             progressExpectation.fulfill()
-            
         }) { (result, error) in
             XCTAssertEqual(result, 5)
             XCTAssertNil(error)

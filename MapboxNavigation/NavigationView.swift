@@ -1,7 +1,6 @@
 import UIKit
 import MapboxDirections
 
-
 /**
  A view that represents the root view of the MapboxNavigation drop-in UI.
  
@@ -14,15 +13,16 @@ import MapboxDirections
  5. WayNameLabel
  6. FloatingStackView
  7. NavigationMapView
+ 8. SpeedLimitView
  
  ```
  +--------------------+
  |         1          |
  +--------------------+
  |         2          |
- +----------------+---+
- |                |   |
- |                | 6 |
+ +---+------------+---+
+ | 8 |            |   |
+ +---+            | 6 |
  |                |   |
  |         7      +---+
  |                    |
@@ -34,11 +34,9 @@ import MapboxDirections
  |         3          |
  +--------------------+
  ```
-*/
+ */
 @IBDesignable
-@objc(MBNavigationView)
 open class NavigationView: UIView {
-    
     private enum Constants {
         static let endOfRouteHeight: CGFloat = 260.0
         static let buttonSpacing: CGFloat = 8.0
@@ -84,6 +82,8 @@ open class NavigationView: UIView {
         view.layer.borderWidth = 1.0 / UIScreen.main.scale
         return view
     }()
+    
+    lazy var speedLimitView: SpeedLimitView = .forAutoLayout(hidden: true)
     
     lazy var topBannerContainerView: BannerContainerView = .forAutoLayout()
     
@@ -143,6 +143,7 @@ open class NavigationView: UIView {
             floatingStackView,
             resumeButton,
             wayNameView,
+            speedLimitView,
             bottomBannerContainerView
         ]
         

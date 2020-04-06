@@ -35,7 +35,6 @@ public class DispatchTimer {
      - parameter executingOn: the queue on which the timer executes. Default is main queue.
      - parameter payload: The payload that executes when the timer expires.
      */
-    
     public init(countdown: DispatchTimeInterval, repeating repetition: DispatchTimeInterval = .never, accuracy: DispatchTimeInterval = defaultAccuracy, executingOn executionQueue: DispatchQueue = .main, payload: @escaping Payload) {
         countdownInterval = countdown
         repetitionInterval = repetition
@@ -61,18 +60,18 @@ public class DispatchTimer {
         timer.schedule(deadline: deadline, repeating: repetitionInterval, leeway: accuracy)
     }
     
-    private func fire() {
-        executionQueue.async(execute: payload)
-    }
-    
     /**
      Arm the timer. Countdown will begin after this function returns.
-    */
+     */
     public func arm() {
         guard state == .disarmed, !timer.isCancelled else { return }
         state = .armed
         scheduleTimer()
-        timer.setEventHandler(handler: fire)
+        timer.setEventHandler { [weak self] in
+            if let unwrappedSelf = self {
+                unwrappedSelf.executionQueue.async(execute: unwrappedSelf.payload)
+            }
+        }
         timer.resume()
     }
     

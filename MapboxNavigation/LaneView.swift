@@ -2,12 +2,10 @@ import UIKit
 import MapboxDirections
 
 /// :nodoc:
-@objc(MBLaneView)
 open class LaneView: UIView {
-    
     let invalidAlpha: CGFloat = 0.4
     
-    var lane: Lane? {
+    var indications: LaneIndication? {
         didSet {
             setNeedsDisplay()
         }
@@ -53,24 +51,39 @@ open class LaneView: UIView {
     
     static let defaultFrame: CGRect = CGRect(origin: .zero, size: 30.0)
     
-    convenience init(component: LaneIndicationComponent) {
+    convenience init(indications: LaneIndication, isUsable: Bool) {
         self.init(frame: LaneView.defaultFrame)
         backgroundColor = .clear
-        lane = Lane(indications: component.indications)
-        maneuverDirection = ManeuverDirection(description: component.indications.description)
-        isValid = component.isUsable
+        self.indications = indications
+        maneuverDirection = ManeuverDirection(rawValue: indications.description)
+        isValid = isUsable
     }
-    
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        commonInit()
+    }
+
+    @objc public required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+        commonInit()
+    }
+
+    func commonInit() {
+        // Explicitly mark the view as non-opaque.
+        // This is needed to obtain correct compositing since we implement our own draw function that includes transparency.
+        isOpaque = false
+    }
+
     override open func draw(_ rect: CGRect) {
         super.draw(rect)
         
         let resizing: LanesStyleKit.ResizingBehavior = .aspectFit
         
-        if let lane = lane {
-            if lane.indications.isSuperset(of: [.straightAhead, .sharpRight]) || lane.indications.isSuperset(of: [.straightAhead, .right]) || lane.indications.isSuperset(of: [.straightAhead, .slightRight]) {
-                
+        if let indications = indications {
+            if indications.isSuperset(of: [.straightAhead, .sharpRight]) || indications.isSuperset(of: [.straightAhead, .right]) || indications.isSuperset(of: [.straightAhead, .slightRight]) {
                 if !isValid {
-                    if lane.indications == .slightRight {
+                    if indications == .slightRight {
                         LanesStyleKit.drawLaneSlightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor)
                     } else {
                         LanesStyleKit.drawLaneStraightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor)
@@ -79,7 +92,7 @@ open class LaneView: UIView {
                 } else if maneuverDirection == .straightAhead {
                     LanesStyleKit.drawLaneStraightOnly(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, secondaryColor: secondaryColor)
                 } else if maneuverDirection == .sharpLeft || maneuverDirection == .left || maneuverDirection == .slightLeft {
-                    if lane.indications == .slightLeft {
+                    if indications == .slightLeft {
                         LanesStyleKit.drawLaneSlightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
                     } else {
                         LanesStyleKit.drawLaneRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
@@ -87,9 +100,9 @@ open class LaneView: UIView {
                 } else {
                     LanesStyleKit.drawLaneRightOnly(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, secondaryColor: secondaryColor)
                 }
-            } else if lane.indications.isSuperset(of: [.straightAhead, .sharpLeft]) || lane.indications.isSuperset(of: [.straightAhead, .left]) || lane.indications.isSuperset(of: [.straightAhead, .slightLeft]) {
+            } else if indications.isSuperset(of: [.straightAhead, .sharpLeft]) || indications.isSuperset(of: [.straightAhead, .left]) || indications.isSuperset(of: [.straightAhead, .slightLeft]) {
                 if !isValid {
-                    if lane.indications == .slightLeft {
+                    if indications == .slightLeft {
                         LanesStyleKit.drawLaneSlightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
                     } else {
                         LanesStyleKit.drawLaneStraightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
@@ -105,7 +118,7 @@ open class LaneView: UIView {
                 } else {
                     LanesStyleKit.drawLaneRightOnly(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, secondaryColor: secondaryColor, flipHorizontally: true)
                 }
-            } else if lane.indications.description.components(separatedBy: ",").count >= 2 {
+            } else if indications.description.components(separatedBy: ",").count >= 2 {
                 // Hack:
                 // Account for a configuation where there is no straight lane
                 // but there are at least 2 indications.
@@ -118,28 +131,28 @@ open class LaneView: UIView {
                     LanesStyleKit.drawLaneRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
                 }
                 alpha = isValid ? 1 : invalidAlpha
-            } else if lane.indications.isSuperset(of: [.sharpRight]) || lane.indications.isSuperset(of: [.right]) || lane.indications.isSuperset(of: [.slightRight]) {
-                if lane.indications == .slightRight {
+            } else if indications.isSuperset(of: [.sharpRight]) || indications.isSuperset(of: [.right]) || indications.isSuperset(of: [.slightRight]) {
+                if indications == .slightRight {
                     LanesStyleKit.drawLaneSlightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor)
                 } else {
                     LanesStyleKit.drawLaneRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor)
                 }
                 alpha = isValid ? 1 : invalidAlpha
-            } else if lane.indications.isSuperset(of: [.sharpLeft]) || lane.indications.isSuperset(of: [.left]) || lane.indications.isSuperset(of: [.slightLeft]) {
-                if lane.indications == .slightLeft {
+            } else if indications.isSuperset(of: [.sharpLeft]) || indications.isSuperset(of: [.left]) || indications.isSuperset(of: [.slightLeft]) {
+                if indications == .slightLeft {
                     LanesStyleKit.drawLaneSlightRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
                 } else {
                     LanesStyleKit.drawLaneRight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: true)
                 }
                 alpha = isValid ? 1 : invalidAlpha
-            } else if lane.indications.isSuperset(of: [.straightAhead]) {
+            } else if indications.isSuperset(of: [.straightAhead]) {
                 LanesStyleKit.drawLaneStraight(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor)
                 alpha = isValid ? 1 : invalidAlpha
-            } else if lane.indications.isSuperset(of: [.uTurn]) {
+            } else if indications.isSuperset(of: [.uTurn]) {
                 let flip = !(drivingSide == .left)
                 LanesStyleKit.drawLaneUturn(frame: bounds, resizing: resizing, primaryColor: appropriatePrimaryColor, flipHorizontally: flip)
                 alpha = isValid ? 1 : invalidAlpha
-            } else if lane.indications.isEmpty && isValid {
+            } else if indications.isEmpty && isValid {
                 // If the lane indication is `none` and the maneuver modifier has a turn in it,
                 // show the turn in the lane image.
                 if maneuverDirection == .sharpRight || maneuverDirection == .right || maneuverDirection == .slightRight {

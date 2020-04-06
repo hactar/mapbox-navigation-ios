@@ -4,10 +4,24 @@ import CarPlay
 #endif
 
 extension VisualInstruction {
+    var laneComponents: [Component] {
+        return components.filter { component -> Bool in
+            if case VisualInstruction.Component.lane(indications: _, isUsable: _) = component {
+                return true
+            }
+            return false
+        }
+    }
     
-    /// Returns true if `VisualInstruction.components` contains any `LaneIndicationComponent`.
-    public var containsLaneIndications: Bool {
-        return components.contains(where: { $0 is LaneIndicationComponent })
+    func maneuverImage(side: DrivingSide, color: UIColor, size: CGSize) -> UIImage? {
+        let mv = ManeuverView()
+        mv.frame = CGRect(origin: .zero, size: size)
+        mv.primaryColor = color
+        mv.backgroundColor = .clear
+        mv.scale = UIScreen.main.scale
+        mv.visualInstruction = self
+        let image = mv.imageRepresentation
+        return shouldFlipImage(side: side) ? image?.withHorizontallyFlippedOrientation() : image
     }
 
 #if canImport(CarPlay)
@@ -16,14 +30,7 @@ extension VisualInstruction {
     public func maneuverImageSet(side: DrivingSide) -> CPImageSet? {
         let colors: [UIColor] = [.black, .white]
         let blackAndWhiteManeuverIcons: [UIImage] = colors.compactMap { (color) in
-            let mv = ManeuverView()
-            mv.frame = CGRect(x: 0, y: 0, width: 30, height: 30)
-            mv.primaryColor = color
-            mv.backgroundColor = .clear
-            mv.scale = UIScreen.main.scale
-            mv.visualInstruction = self
-            let image = mv.imageRepresentation
-            return shouldFlipImage(side: side) ? image?.withHorizontallyFlippedOrientation() : image
+            return maneuverImage(side: side, color: color, size: CGSize(width: 30, height: 30))
         }
         guard blackAndWhiteManeuverIcons.count == 2 else { return nil }
         return CPImageSet(lightContentImage: blackAndWhiteManeuverIcons[1], darkContentImage: blackAndWhiteManeuverIcons[0])
@@ -31,16 +38,14 @@ extension VisualInstruction {
     
     /// Returns whether the `VisualInstruction`’s maneuver image should be flipped according to the driving side.
     public func shouldFlipImage(side: DrivingSide) -> Bool {
-        let leftDirection = [.left, .slightLeft, .sharpLeft].contains(maneuverDirection)
-        
-        switch maneuverType {
+        switch maneuverType ?? .turn {
         case .takeRoundabout,
              .turnAtRoundabout,
              .takeRotary,
              _ where maneuverDirection == .uTurn:
             return side == .left
         default:
-            return leftDirection
+            return [.left, .slightLeft, .sharpLeft].contains(maneuverDirection ?? .straightAhead)
         }
     }
 

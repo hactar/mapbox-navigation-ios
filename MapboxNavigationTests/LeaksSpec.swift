@@ -7,13 +7,8 @@ import MapboxDirections
 @testable import MapboxNavigation
 
 class LeaksSpec: QuickSpec {
-    
     lazy var initialRoute: Route = {
-        let jsonRoute = (response["routes"] as! [AnyObject]).first as! [String: Any]
-        let waypoint1 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.795042, longitude: -122.413165))
-        let waypoint2 = Waypoint(coordinate: CLLocationCoordinate2D(latitude: 37.7727, longitude: -122.433378))
-        let route     = Route(json: jsonRoute, waypoints: [waypoint1, waypoint2], options: NavigationRouteOptions(waypoints: [waypoint1, waypoint2]))
-        
+        let route = response.routes!.first!
         route.accessToken = "foo"
         
         return route
@@ -23,13 +18,11 @@ class LeaksSpec: QuickSpec {
     
     override func spec() {
         describe("RouteVoiceController") {
-            
             let voiceController = LeakTest {
                 return RouteVoiceController(navigationService: self.dummySvc)
             }
             
             let resumeNotifications: (RouteVoiceController) -> () = { controller in
-                
                 controller.observeNotifications(by: self.dummySvc)
             }
             

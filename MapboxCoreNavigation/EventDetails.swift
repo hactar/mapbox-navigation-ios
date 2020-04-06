@@ -53,7 +53,6 @@ struct PerformanceEventDetails: EventDetails {
 }
 
 struct NavigationEventDetails: EventDetails {
-    
     let audioType: String = AVAudioSession.sharedInstance().audioType
     let applicationState = UIApplication.shared.applicationState
     let batteryLevel: Int = UIDevice.current.batteryLevel >= 0 ? Int(UIDevice.current.batteryLevel * 100) : -1
@@ -121,15 +120,15 @@ struct NavigationEventDetails: EventDetails {
         requestIdentifier = dataSource.routeProgress.route.routeIdentifier
                 
         if let location = dataSource.router.rawLocation,
-           let coordinates = dataSource.routeProgress.route.coordinates,
-           let lastCoord = coordinates.last {
+            let coordinates = dataSource.routeProgress.route.shape?.coordinates,
+            let lastCoord = coordinates.last {
             userAbsoluteDistanceToDestination = location.distance(from: CLLocation(latitude: lastCoord.latitude, longitude: lastCoord.longitude))
         } else {
             userAbsoluteDistanceToDestination = nil
         }
         
-        if let geometry = session.originalRoute.coordinates {
-            originalGeometry = Polyline(coordinates: geometry)
+        if let shape = session.originalRoute.shape {
+            originalGeometry = Polyline(coordinates: shape.coordinates)
             originalDistance = round(session.originalRoute.distance)
             originalEstimatedDuration = round(session.originalRoute.expectedTravelTime)
             originalStepCount = session.originalRoute.legs.map({$0.steps.count}).reduce(0, +)
@@ -140,8 +139,8 @@ struct NavigationEventDetails: EventDetails {
             originalStepCount = nil
         }
         
-        if let geometry = session.currentRoute.coordinates {
-            self.geometry = Polyline(coordinates: geometry)
+        if let shape = session.currentRoute.shape {
+            self.geometry = Polyline(coordinates: shape.coordinates)
             distance = round(session.currentRoute.distance)
             estimatedDuration = round(session.currentRoute.expectedTravelTime)
         } else {
@@ -158,7 +157,6 @@ struct NavigationEventDetails: EventDetails {
         
         locationEngine = String(describing: dataSource.locationProvider)
         locationManagerDesiredAccuracy = dataSource.desiredAccuracy
-        
         
         var totalTimeInPortrait = session.timeSpentInPortrait
         var totalTimeInLandscape = session.timeSpentInLandscape
@@ -177,7 +175,6 @@ struct NavigationEventDetails: EventDetails {
             totalTimeInBackground += abs(session.lastTimeInBackground.timeIntervalSinceNow)
         }
         percentTimeInForeground = totalTimeInPortrait + totalTimeInLandscape == 0 ? 100 : Int((totalTimeInPortrait / (totalTimeInPortrait + totalTimeInLandscape) * 100))
-        
         
         stepIndex = dataSource.routeProgress.currentLegProgress.stepIndex
         stepCount = dataSource.routeProgress.currentLeg.steps.count
@@ -299,7 +296,6 @@ struct NavigationEventDetails: EventDetails {
 }
 
 extension RouteLegProgress: Encodable {
-    
     private enum CodingKeys: String, CodingKey {
         case upcomingInstruction
         case upcomingType
@@ -318,12 +314,12 @@ extension RouteLegProgress: Encodable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(upcomingStep?.instructions, forKey: .upcomingInstruction)
-        try container.encodeIfPresent(upcomingStep?.maneuverType.description, forKey: .upcomingType)
-        try container.encodeIfPresent(upcomingStep?.maneuverDirection.description, forKey: .upcomingModifier)
+        try container.encodeIfPresent(upcomingStep?.maneuverType, forKey: .upcomingType)
+        try container.encodeIfPresent(upcomingStep?.maneuverDirection, forKey: .upcomingModifier)
         try container.encodeIfPresent(upcomingStep?.names?.joined(separator: ";"), forKey: .upcomingName)
         try container.encodeIfPresent(currentStep.instructions, forKey: .previousInstruction)
-        try container.encode(currentStep.maneuverType.description, forKey: .previousType)
-        try container.encode(currentStep.maneuverDirection.description, forKey: .previousModifier)
+        try container.encode(currentStep.maneuverType, forKey: .previousType)
+        try container.encode(currentStep.maneuverDirection, forKey: .previousModifier)
         try container.encode(currentStep.names?.joined(separator: ";"), forKey: .previousName)
         try container.encode(Int(currentStep.distance), forKey: .distance)
         try container.encode(Int(currentStep.expectedTravelTime), forKey: .duration)
@@ -358,6 +354,8 @@ extension UIApplication.State: Encodable {
             stringRepresentation = "Inactive"
         case .background:
             stringRepresentation = "Background"
+        @unknown default:
+            fatalError("Indescribable application state \(rawValue)")
         }
         try container.encode(stringRepresentation)
     }
