@@ -450,7 +450,7 @@ extension NavigationViewController: RouteMapViewControllerDelegate {
 extension NavigationViewController: NavigationServiceDelegate {
     
     // Bikemap Change: make open to allow override
-    @objc open func navigationService(_ service: NavigationService, shouldRerouteFrom location: CLLocation) -> Bool {
+    open func navigationService(_ service: NavigationService, shouldRerouteFrom location: CLLocation) -> Bool {
         let defaultBehavior = RouteController.DefaultBehavior.shouldRerouteFromLocation
         let componentsWantReroute = navigationComponents.allSatisfy { $0.navigationService(service, shouldRerouteFrom: location) }
         return componentsWantReroute && (delegate?.navigationViewController(self, shouldRerouteFrom: location) ?? defaultBehavior)
@@ -486,7 +486,7 @@ extension NavigationViewController: NavigationServiceDelegate {
         return componentsWantToDiscard && (delegate?.navigationViewController(self, shouldDiscard: location) ?? defaultBehavior)
     }
     
-    @objc open func navigationService(_ service: NavigationService, didUpdate progress: RouteProgress, with location: CLLocation, rawLocation: CLLocation) {
+    open func navigationService(_ service: NavigationService, didUpdate progress: RouteProgress, with location: CLLocation, rawLocation: CLLocation) {
         
         //Check to see if we're in a tunnel.
         checkTunnelState(at: location, along: progress)
@@ -539,7 +539,7 @@ extension NavigationViewController: NavigationServiceDelegate {
     }
     
 
-    @objc public func navigationService(_ service: NavigationService, didPassVisualInstructionPoint instruction: VisualInstructionBanner, routeProgress: RouteProgress) {
+    public func navigationService(_ service: NavigationService, didPassVisualInstructionPoint instruction: VisualInstructionBanner, routeProgress: RouteProgress) {
         for component in navigationComponents {
             component.navigationService(service, didPassVisualInstructionPoint: instruction, routeProgress: routeProgress)
         }
@@ -555,7 +555,7 @@ extension NavigationViewController: NavigationServiceDelegate {
     
 
     // Bikemap Change: make open to allow override
-    @objc open func navigationService(_ service: NavigationService, didArriveAt waypoint: Waypoint) -> Bool {
+    open func navigationService(_ service: NavigationService, didArriveAt waypoint: Waypoint) -> Bool {
         let defaultBehavior = RouteController.DefaultBehavior.didArriveAtWaypoint
         let componentsWantAdvance = navigationComponents.allSatisfy { $0.navigationService(service, didArriveAt: waypoint) }
         let advancesToNextLeg = componentsWantAdvance && (delegate?.navigationViewController(self, didArriveAt: waypoint) ?? defaultBehavior)
@@ -571,7 +571,7 @@ extension NavigationViewController: NavigationServiceDelegate {
         mapController.showEndOfRoute(duration: duration, completion: completionHandler)
     }
 
-    @objc open func navigationService(_ service: NavigationService, willBeginSimulating progress: RouteProgress, becauseOf reason: SimulationIntent) {
+    open func navigationService(_ service: NavigationService, willBeginSimulating progress: RouteProgress, becauseOf reason: SimulationIntent) {
         for component in navigationComponents {
             component.navigationService(service, willBeginSimulating: progress, becauseOf: reason)
         }

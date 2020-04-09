@@ -523,7 +523,7 @@ extension RouteMapViewController: NavigationViewDelegate {
     // MARK: VisualInstructionDelegate
     
     public func label(_ label: InstructionLabel, willPresent instruction: VisualInstruction, as presented: NSAttributedString) -> NSAttributedString? {
-        return delegate?.label?(label, willPresent: instruction, as: presented)
+        return delegate?.label(label, willPresent: instruction, as: presented)
     }
 
     // MARK: NavigationMapViewCourseTrackingDelegate
