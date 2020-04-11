@@ -152,7 +152,7 @@ open class NavigationViewController: UIViewController, NavigationStatusPresenter
     
     var mapViewController: RouteMapViewController?
     
-    var topViewController: ContainerViewController?
+    public var topViewController: ContainerViewController?
     
     var bottomViewController: ContainerViewController?
     
