@@ -43,7 +43,7 @@ public extension TopBannerViewControllerDelegate {
 }
 
 open class TopBannerViewController: UIViewController {
-    weak var delegate: TopBannerViewControllerDelegate? = nil
+    public weak var delegate: TopBannerViewControllerDelegate? = nil
     
     lazy var topPaddingView: TopBannerView = .forAutoLayout()
     
