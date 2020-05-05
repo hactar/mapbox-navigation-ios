@@ -156,7 +156,7 @@ open class NavigationViewController: UIViewController, NavigationStatusPresenter
     
     var bottomViewController: ContainerViewController?
     
-    var navigationComponents: [NavigationComponent] {
+    open var navigationComponents: [NavigationComponent] {
         var components: [NavigationComponent] = []
         if let mvc = mapViewController {
             components.append(mvc)
