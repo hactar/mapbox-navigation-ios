@@ -4,6 +4,7 @@
 
 ### Packaging
 * This SDK can no longer be used in applications written in pure Objective-C. If you need to use this SDK’s public API from Objective-C code, you will need to implement a wrapper in Swift that bridges the subset of the API you need from Swift to Objective-C. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
+* Added a new dependency on MapboxAccounts so that this SDK’s usage of Mapbox APIs is [billed](https://www.mapbox.com/pricing/) together based on [monthly active users](https://docs.mapbox.com/help/glossary/monthly-active-users/) rather than individually by HTTP request. If you use Carthage to install this SDK, remember to add MapboxAccounts.framework to the “Frameworks, Libraries, and Embedded Content” section and the input and output file lists of Carthage’s Run Script build phase. ([#2151](https://github.com/mapbox/mapbox-navigation-ios/pull/2151))
 * Upgraded to [Mapbox Maps SDK for iOS v5.6._x_](https://github.com/mapbox/mapbox-gl-native-ios/releases/tag/ios-v5.6.0). ([#2302](https://github.com/mapbox/mapbox-navigation-ios/pull/2302))
 
 ### Top and bottom banners
@@ -16,6 +17,7 @@
 * Renamed `NavigationMapView.showWaypoints(_:legIndex:)` to `NavigationMapView.showWaypoints(on:legIndex:)`. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230))
 * Removed the `NavigationMapView.navigationMapDelegate` property in favor of `NavigationMapView.navigationMapViewDelegate`. ([#2297](https://github.com/mapbox/mapbox-navigation-ios/pull/2297))
 * Added a speed limit indicator to the upper-left corner of the map view during turn-by-turn navigation (upper-right corner in CarPlay). To hide the speed limit indicator, set the `NavigationViewController.showsSpeedLimits` property to `false`. To customize the indicator’s colors, configure `SpeedLimitView`’s appearance proxy inside a `Style` subclass. ([#2291](https://github.com/mapbox/mapbox-navigation-ios/pull/2291))
+* Fixed an issue where the current road name label contained an oversized route shield when the current map style was a custom style created in Mapbox Studio. ([#2357](https://github.com/mapbox/mapbox-navigation-ios/pull/2357))
 
 ### Spoken instructions
 * Removed `MapboxVoiceController.play(_:)` in favor of `MapboxVoiceController.play(instruction:data:)`. ([#2230](https://github.com/mapbox/mapbox-navigation-ios/pull/2230), [#2297](https://github.com/mapbox/mapbox-navigation-ios/pull/2297))
