@@ -228,7 +228,6 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
             return $0.isQualified
         }
         
-        recordedLocations.append(contentsOf: filteredLocations)
 
         if !filteredLocations.isEmpty, hasFoundOneQualifiedLocation == false {
             hasFoundOneQualifiedLocation = true
