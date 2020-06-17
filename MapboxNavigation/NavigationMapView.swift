@@ -853,7 +853,7 @@ open class NavigationMapView: MGLMapView, UIGestureRecognizerDelegate {
     // Bikemap 123 to abc waypoints.
     func characterForIndex(index: Int) -> String {
         let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        let targetIndex = index % alphabet.count - 1 // We never use charcter for the start point
+        let targetIndex = (index - 1) % alphabet.count // We never use charcter for the start point
         let index = alphabet.index(alphabet.startIndex, offsetBy: targetIndex)
         return String(alphabet[index])
     }
