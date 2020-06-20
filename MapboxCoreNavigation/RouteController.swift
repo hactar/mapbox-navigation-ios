@@ -21,7 +21,7 @@ open class RouteController: NSObject {
         public static let shouldDisableBatteryMonitoring: Bool = true
     }
     
-    let navigator = MBNavigator()
+    let navigator = Navigator()
     
     public var recordedLocations: [CLLocation] = []
     
@@ -62,7 +62,7 @@ open class RouteController: NSObject {
     
     var isFirstLocation: Bool = true
     
-    public var config: MBNavigatorConfig? {
+    public var config: NavigatorConfig? {
         get {
             return navigator.getConfig()
         }
@@ -198,7 +198,7 @@ open class RouteController: NSObject {
         
         rawLocation = locations.last
         
-        locations.forEach { navigator.updateLocation(for: MBFixLocation($0)) }
+        locations.forEach { navigator.updateLocation(for: FixLocation($0)) }
         
         recordedLocations.append(contentsOf: locations)
         
@@ -223,7 +223,7 @@ open class RouteController: NSObject {
         checkForFasterRoute(from: location, routeProgress: routeProgress)
     }
     
-    func updateIndexes(status: MBNavigationStatus, progress: RouteProgress) {
+    func updateIndexes(status: NavigationStatus, progress: RouteProgress) {
         let newLegIndex = Int(status.legIndex)
         let newStepIndex = Int(status.stepIndex)
         let newIntersectionIndex = Int(status.intersectionIndex)
@@ -249,7 +249,7 @@ open class RouteController: NSObject {
         }
     }
     
-    func updateSpokenInstructionProgress(status: MBNavigationStatus, willReRoute: Bool) {
+    func updateSpokenInstructionProgress(status: NavigationStatus, willReRoute: Bool) {
         let didUpdate = status.voiceInstruction?.index != nil
 
         // Announce voice instruction if it was updated and we are not going to reroute
@@ -259,7 +259,7 @@ open class RouteController: NSObject {
         }
     }
     
-    func updateVisualInstructionProgress(status: MBNavigationStatus) {
+    func updateVisualInstructionProgress(status: NavigationStatus) {
         let didUpdate = status.bannerInstruction != nil
         
         // Announce visual instruction if it was updated or it is the first location being reported
@@ -270,14 +270,13 @@ open class RouteController: NSObject {
         }
     }
     
-    func updateRouteLegProgress(status: MBNavigationStatus) {
+    func updateRouteLegProgress(status: NavigationStatus) {
         let legProgress = routeProgress.currentLegProgress
         
         guard let currentDestination = legProgress.leg.destination else {
             preconditionFailure("Route legs used for navigation must have destinations")
         }
-        guard let remainingVoiceInstructions = legProgress.currentStepProgress.remainingSpokenInstructions else { return
-        }
+        let remainingVoiceInstructions = legProgress.currentStepProgress.remainingSpokenInstructions ?? []
         
         // We are at least at the "You will arrive" instruction
         if legProgress.remainingSteps.count <= 2 && remainingVoiceInstructions.count <= 2 {
@@ -309,7 +308,7 @@ open class RouteController: NSObject {
             preconditionFailure("Route steps used for navigation must have shape data")
         }
         if let closestCoordinate = polyline.closestCoordinate(to: rawLocation.coordinate) {
-            let remainingDistance = polyline.distance(from: closestCoordinate.coordinate)
+            let remainingDistance = polyline.distance(from: closestCoordinate.coordinate)!
             let distanceTraveled = step.distance - remainingDistance
             stepProgress.distanceTraveled = distanceTraveled
             
@@ -378,7 +377,7 @@ extension RouteController: Router {
         return userIsOnRoute(location, status: nil)
     }
     
-    public func userIsOnRoute(_ location: CLLocation, status: MBNavigationStatus?) -> Bool {
+    public func userIsOnRoute(_ location: CLLocation, status: NavigationStatus?) -> Bool {
         
         guard let destination = routeProgress.currentLeg.destination else {
             preconditionFailure("Route legs used for navigation must have destinations")

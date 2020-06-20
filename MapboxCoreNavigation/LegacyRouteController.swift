@@ -290,7 +290,7 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
         }
         
         if let closestCoordinate = polyline.closestCoordinate(to: rawLocation.coordinate) {
-            let remainingDistance = polyline.distance(from: closestCoordinate.coordinate)
+            let remainingDistance = polyline.distance(from: closestCoordinate.coordinate)!
             let distanceTraveled = step.distance - remainingDistance
             stepProgress.distanceTraveled = distanceTraveled
             
@@ -530,7 +530,7 @@ open class LegacyRouteController: NSObject, Router, InternalRouter, CLLocationMa
 
     func updateIntersectionDistances() {
         if let shape = routeProgress.currentLegProgress.currentStep.shape, let intersections = routeProgress.currentLegProgress.currentStep.intersections {
-            let distances: [CLLocationDistance] = intersections.map { shape.distance(from: shape.coordinates.first, to: $0.location) }
+            let distances: [CLLocationDistance] = intersections.compactMap { shape.distance(from: shape.coordinates.first, to: $0.location) }
             routeProgress.currentLegProgress.currentStepProgress.intersectionDistances = distances
         }
     }
